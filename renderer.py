@@ -23,7 +23,7 @@ MONTHS_PT = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho",
              "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 
 # ── Constantes CEG ────────────────────────────────────────────────────────────
-HEADER_IMG_URL  = "https://estudosglobais.unb.br/wp-content/uploads/2026/04/site-header.png"
+HEADER_IMG_URL  = "https://i.ibb.co/CpsGNhxg/site-header.png"
 COLOR_PRIMARY   = "#26619C"
 COLOR_SECONDARY = "#acac95"
 COLOR_BG_EMAIL  = "#f2f2f2"
