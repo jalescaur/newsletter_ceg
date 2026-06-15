@@ -1,71 +1,130 @@
 """
-app.py — Interface Streamlit do Gerador de Boletim CEG-UnB.
-Multipage via st.tabs: Editor | Aparência | Rodapé | Guia de Uso
-
-Execute com:  streamlit run app.py
+app.py — Boletim CEG-UnB · Gerador de Newsletter
+Reformulado: sidebar persistente · editor com syntax highlight · exportação PDF
 """
 
+from __future__ import annotations
 import base64
+import io
 import streamlit as st
 import streamlit.components.v1 as components
 
 from renderer import build_email_html, build_full_html, _render_footer
-from config import DEFAULT_CONFIG, FONT_OPTIONS, DATE_FORMAT_OPTIONS, SAMPLE_CONTENT
+from config import (
+    DEFAULT_CONFIG, FONT_OPTIONS, DATE_FORMAT_OPTIONS, SAMPLE_CONTENT,
+    list_profiles, save_profile, load_profile, delete_profile,
+)
 
-# ── Configuração da página ────────────────────────────────────────────────────
-st.set_page_config(page_title="Boletim CEG-UnB", page_icon="📰",
-                   layout="wide", initial_sidebar_state="collapsed")
+# ── Página ────────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Boletim CEG-UnB",
+    page_icon="📰",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 st.markdown("""
 <style>
-  .block-container{padding-top:1rem;padding-bottom:.5rem}
-  .stTextArea textarea{font-family:'Menlo','Consolas',monospace;
-                       font-size:12.5px;line-height:1.75}
-  .stTabs [data-baseweb="tab-list"]{gap:4px}
-  .stTabs [data-baseweb="tab"]{padding:6px 18px;border-radius:6px 6px 0 0;font-size:13px}
-  .stDownloadButton>button{width:100%;background:#0f0f0f!important;color:#fff!important;
-    border:none!important;border-radius:6px!important;font-weight:600!important}
-  div[data-testid="stExpander"]{border:1px solid #e0dbd4;border-radius:8px}
+/* Base */
+[data-testid="stAppViewContainer"] { background: #f7f5f2; }
+[data-testid="stSidebar"] { background: #1a1a1a !important; }
+[data-testid="stSidebar"] * { color: #e8e4de !important; }
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stTextInput label,
+[data-testid="stSidebar"] .stSlider label,
+[data-testid="stSidebar"] .stRadio label,
+[data-testid="stSidebar"] .stColorPicker label { color: #a8a098 !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: .06em; }
+[data-testid="stSidebar"] h1,[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,[data-testid="stSidebar"] h4 { color: #fff !important; }
+[data-testid="stSidebar"] hr { border-color: #333 !important; }
+[data-testid="stSidebar"] .stButton > button {
+    background: #2a2a2a !important; color: #e8e4de !important;
+    border: 1px solid #444 !important; border-radius: 6px !important;
+    font-size: 12px !important; width: 100%;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+    background: #00a99d !important; border-color: #00a99d !important; color: #fff !important;
+}
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] { gap: 2px; border-bottom: 2px solid #e0dbd4; }
+.stTabs [data-baseweb="tab"] {
+    padding: 8px 20px; border-radius: 6px 6px 0 0;
+    font-size: 13px; font-weight: 500; color: #666;
+    background: transparent;
+}
+.stTabs [aria-selected="true"] {
+    background: #fff !important; color: #0f0f0f !important;
+    border-bottom: 2px solid #00a99d !important; font-weight: 700;
+}
+/* Editor */
+.stTextArea textarea {
+    font-family: 'Menlo', 'Consolas', 'Monaco', monospace !important;
+    font-size: 12.5px !important; line-height: 1.75 !important;
+    background: #1e1e1e !important; color: #d4d0c8 !important;
+    border: 1px solid #333 !important; border-radius: 8px !important;
+}
+/* Botões de ação */
+.action-btn > button {
+    background: #0f0f0f !important; color: #fff !important;
+    border: none !important; border-radius: 6px !important;
+    font-weight: 600 !important; font-size: 13px !important;
+}
+.action-btn-accent > button {
+    background: #00a99d !important; color: #fff !important;
+    border: none !important; border-radius: 6px !important;
+    font-weight: 600 !important; font-size: 13px !important;
+}
+/* Cards de seção */
+.section-card {
+    background: #fff; border-radius: 10px; padding: 16px 20px;
+    border: 1px solid #e8e3dc; margin-bottom: 12px;
+}
+/* Expanders */
+div[data-testid="stExpander"] { border: 1px solid #e0dbd4 !important; border-radius: 8px !important; background: #fff; }
+/* Cabeçalho da sidebar */
+.sidebar-header {
+    padding: 4px 0 12px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 16px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# ── Session state helpers ────────────────────────────────────────────────────
+
+# ── Session state ─────────────────────────────────────────────────────────────
 def _ss(key, default):
     if key not in st.session_state:
         st.session_state[key] = default
 
-_ss("md_text",        SAMPLE_CONTENT)
-_ss("footer_left",    DEFAULT_CONFIG["footer_left"])
-_ss("footer_right",   DEFAULT_CONFIG["footer_right"])
-_ss("banner_b64",     "")
-_ss("banner_ext",     "png")
-# Aparência
-_ss("org",            DEFAULT_CONFIG["org"])
-_ss("edition",        DEFAULT_CONFIG["edition"])
-_ss("date_fmt_key",   list(DATE_FORMAT_OPTIONS.keys())[0])
-_ss("banner_height",  int(DEFAULT_CONFIG["banner_height"].replace("px","")))
-_ss("banner_fallback","#0f0f0f")
-_ss("grad_left",      DEFAULT_CONFIG["grad_left"])
-_ss("grad_right",     DEFAULT_CONFIG["grad_right"])
-_ss("grad_h",         int(DEFAULT_CONFIG["grad_height"]))
-_ss("accent",         DEFAULT_CONFIG["accent"])
-_ss("highlight",      DEFAULT_CONFIG["highlight"])
-_ss("body_text",      DEFAULT_CONFIG["body_text"])
-_ss("primary",        DEFAULT_CONFIG["primary"])
-_ss("bg_color",       DEFAULT_CONFIG["bg_color"])
-_ss("font_label",     list(FONT_OPTIONS.keys())[0])
-_ss("font_size",      int(DEFAULT_CONFIG["font_size"]))
-_ss("line_height",    float(DEFAULT_CONFIG["line_height"]))
-_ss("footer_cols",    1)
-_ss("footer_bg",      DEFAULT_CONFIG["footer_bg"])
-_ss("table_header_bg", DEFAULT_CONFIG["table_header_bg"])
-_ss("table_event_bg",  DEFAULT_CONFIG["table_event_bg"])
-_ss("use_temp_colors", DEFAULT_CONFIG["use_temp_colors"])
-_ss("footer_color",   DEFAULT_CONFIG["footer_color"])
+_ss("md_text",          SAMPLE_CONTENT)
+_ss("banner_b64",       "")
+_ss("banner_ext",       "png")
+# Aparência (carregada do DEFAULT_CONFIG — persistida via perfis)
+_ss("org",              DEFAULT_CONFIG["org"])
+_ss("edition",          DEFAULT_CONFIG["edition"])
+_ss("date_fmt_key",     list(DATE_FORMAT_OPTIONS.keys())[0])
+_ss("banner_height",    int(DEFAULT_CONFIG["banner_height"].replace("px","")))
+_ss("banner_fallback",  DEFAULT_CONFIG["banner_fallback"])
+_ss("accent",           DEFAULT_CONFIG["accent"])
+_ss("highlight",        DEFAULT_CONFIG["highlight"])
+_ss("body_text",        DEFAULT_CONFIG["body_text"])
+_ss("primary",          DEFAULT_CONFIG["primary"])
+_ss("bg_color",         DEFAULT_CONFIG["bg_color"])
+_ss("font_label",       list(FONT_OPTIONS.keys())[0])
+_ss("font_size",        int(DEFAULT_CONFIG["font_size"]))
+_ss("line_height",      float(DEFAULT_CONFIG["line_height"]))
+_ss("footer_cols",      1)
+_ss("footer_left",      DEFAULT_CONFIG["footer_left"])
+_ss("footer_right",     DEFAULT_CONFIG["footer_right"])
+_ss("footer_bg",        DEFAULT_CONFIG["footer_bg"])
+_ss("footer_color",     DEFAULT_CONFIG["footer_color"])
+_ss("table_header_bg",  DEFAULT_CONFIG["table_header_bg"])
+_ss("table_event_bg",   DEFAULT_CONFIG["table_event_bg"])
+_ss("use_temp_colors",  DEFAULT_CONFIG["use_temp_colors"])
+_ss("active_profile",   None)
 
 
 def build_cfg() -> dict:
-    """Monta o dicionário de configuração a partir do session_state."""
     return {
         "org":                st.session_state.org,
         "edition":            st.session_state.edition,
@@ -74,9 +133,6 @@ def build_cfg() -> dict:
         "banner_img_ext":     st.session_state.banner_ext,
         "banner_height":      f"{st.session_state.banner_height}px",
         "banner_fallback_color": st.session_state.banner_fallback,
-        "grad_left":          st.session_state.grad_left,
-        "grad_right":         st.session_state.grad_right,
-        "grad_height":        str(st.session_state.grad_h),
         "accent":             st.session_state.accent,
         "highlight":          st.session_state.highlight,
         "body_text":          st.session_state.body_text,
@@ -90,263 +146,356 @@ def build_cfg() -> dict:
         "footer_right":       st.session_state.footer_right,
         "footer_bg":          st.session_state.footer_bg,
         "footer_color":       st.session_state.footer_color,
-        "table_header_bg":    st.session_state.get("table_header_bg", DEFAULT_CONFIG["table_header_bg"]),
-        "table_event_bg":     st.session_state.get("table_event_bg",  DEFAULT_CONFIG["table_event_bg"]),
-        "use_temp_colors":    st.session_state.get("use_temp_colors", True),
+        "table_header_bg":    st.session_state.table_header_bg,
+        "table_event_bg":     st.session_state.table_event_bg,
+        "use_temp_colors":    st.session_state.use_temp_colors,
     }
 
 
-# ── Tabs ──────────────────────────────────────────────────────────────────────
-t_editor, t_aparencia, t_rodape, t_guia = st.tabs([
-    "Editor", "Aparência", "Rodapé", "Guia de uso",
-])
+def _apply_profile_to_ss(cfg: dict):
+    """Aplica um dict de configuração carregado ao session_state."""
+    font_map_inv = {v: k for k, v in FONT_OPTIONS.items()}
+    date_map_inv = {v: k for k, v in DATE_FORMAT_OPTIONS.items()}
+
+    st.session_state.org           = cfg.get("org", DEFAULT_CONFIG["org"])
+    st.session_state.edition       = cfg.get("edition", DEFAULT_CONFIG["edition"])
+    st.session_state.date_fmt_key  = date_map_inv.get(cfg.get("date_format","extenso"), list(DATE_FORMAT_OPTIONS.keys())[0])
+    st.session_state.banner_height = int(cfg.get("banner_height","160px").replace("px",""))
+    st.session_state.banner_fallback = cfg.get("banner_fallback", DEFAULT_CONFIG["banner_fallback"])
+    st.session_state.accent        = cfg.get("accent",       DEFAULT_CONFIG["accent"])
+    st.session_state.highlight     = cfg.get("highlight",    DEFAULT_CONFIG["highlight"])
+    st.session_state.body_text     = cfg.get("body_text",    DEFAULT_CONFIG["body_text"])
+    st.session_state.primary       = cfg.get("primary",      DEFAULT_CONFIG["primary"])
+    st.session_state.bg_color      = cfg.get("bg_color",     DEFAULT_CONFIG["bg_color"])
+    st.session_state.font_label    = font_map_inv.get(cfg.get("body_font", DEFAULT_CONFIG["body_font"]), list(FONT_OPTIONS.keys())[0])
+    st.session_state.font_size     = int(cfg.get("font_size","14"))
+    st.session_state.line_height   = float(cfg.get("line_height","1.25"))
+    st.session_state.footer_cols   = int(cfg.get("footer_cols", 1))
+    st.session_state.footer_left   = cfg.get("footer_left",  DEFAULT_CONFIG["footer_left"])
+    st.session_state.footer_right  = cfg.get("footer_right", DEFAULT_CONFIG["footer_right"])
+    st.session_state.footer_bg     = cfg.get("footer_bg",    DEFAULT_CONFIG["footer_bg"])
+    st.session_state.footer_color  = cfg.get("footer_color", DEFAULT_CONFIG["footer_color"])
+    st.session_state.table_header_bg = cfg.get("table_header_bg", DEFAULT_CONFIG["table_header_bg"])
+    st.session_state.table_event_bg  = cfg.get("table_event_bg",  DEFAULT_CONFIG["table_event_bg"])
+    st.session_state.use_temp_colors = cfg.get("use_temp_colors", True)
+
+
+def _make_pdf(html_full: str) -> bytes:
+    """Gera PDF a partir do HTML usando WeasyPrint."""
+    try:
+        from weasyprint import HTML
+        return HTML(string=html_full).write_pdf()
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {e}")
+        return b""
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 — EDITOR
+# SIDEBAR — Aparência + Rodapé + Perfis (persistente)
 # ══════════════════════════════════════════════════════════════════════════════
+with st.sidebar:
+    st.markdown('<div class="sidebar-header">', unsafe_allow_html=True)
+    st.markdown("### 📰 CEG — UnB")
+    st.caption("Gerador de Boletim")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Perfis ────────────────────────────────────────────────────────────────
+    with st.expander("💾 Perfis de aparência", expanded=False):
+        profiles = list_profiles()
+        if profiles:
+            sel_profile = st.selectbox("Carregar perfil", ["— selecionar —"] + profiles, key="sb_profile_sel")
+            col_load, col_del = st.columns(2)
+            with col_load:
+                if st.button("📂 Carregar", key="btn_load_profile"):
+                    if sel_profile != "— selecionar —":
+                        _apply_profile_to_ss(load_profile(sel_profile))
+                        st.session_state.active_profile = sel_profile
+                        st.success(f"Perfil «{sel_profile}» carregado.")
+                        st.rerun()
+            with col_del:
+                if st.button("🗑️ Excluir", key="btn_del_profile"):
+                    if sel_profile != "— selecionar —":
+                        delete_profile(sel_profile)
+                        st.rerun()
+        else:
+            st.caption("Nenhum perfil salvo ainda.")
+
+        st.divider()
+        new_profile_name = st.text_input("Nome do novo perfil", placeholder="ex: padrão-ceg", key="sb_profile_new")
+        if st.button("💾 Salvar perfil atual", key="btn_save_profile"):
+            name = new_profile_name.strip()
+            if name:
+                save_profile(name, build_cfg())
+                st.session_state.active_profile = name
+                st.success(f"Perfil «{name}» salvo!")
+                st.rerun()
+            else:
+                st.warning("Digite um nome para o perfil.")
+
+    if st.session_state.active_profile:
+        st.caption(f"✅ Perfil ativo: **{st.session_state.active_profile}**")
+
+    st.divider()
+
+    # ── Identificação ─────────────────────────────────────────────────────────
+    st.markdown("#### 🏛️ Identificação")
+    st.session_state.org      = st.text_input("Organização",     st.session_state.org,     key="sb_org")
+    st.session_state.edition  = st.text_input("Edição / Volume", st.session_state.edition, key="sb_ed")
+    st.session_state.date_fmt_key = st.selectbox(
+        "Formato de data",
+        list(DATE_FORMAT_OPTIONS.keys()),
+        index=list(DATE_FORMAT_OPTIONS.keys()).index(st.session_state.date_fmt_key),
+        key="sb_dfmt",
+    )
+
+    st.divider()
+
+    # ── Banner ────────────────────────────────────────────────────────────────
+    st.markdown("#### 🖼️ Banner")
+    uploaded = st.file_uploader("Imagem (PNG, JPG, GIF)", type=["png","jpg","jpeg","gif"], key="sb_upload")
+    if uploaded:
+        raw = uploaded.read()
+        st.session_state.banner_b64 = base64.b64encode(raw).decode()
+        st.session_state.banner_ext = uploaded.type.split("/")[-1].replace("jpeg","jpg")
+        st.success(f"{len(raw)//1024} KB carregados")
+    if st.session_state.banner_b64:
+        if st.button("🗑️ Remover banner"):
+            st.session_state.banner_b64 = ""
+            st.rerun()
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.session_state.banner_height = st.slider("Altura (px)", 60, 360, st.session_state.banner_height, key="sb_bh")
+    with c2:
+        st.session_state.banner_fallback = st.color_picker("Fundo s/ imagem", st.session_state.banner_fallback, key="sb_bf")
+
+    st.divider()
+
+    # ── Cores ─────────────────────────────────────────────────────────────────
+    st.markdown("#### 🎨 Cores")
+    cc1, cc2 = st.columns(2)
+    with cc1:
+        st.session_state.bg_color   = st.color_picker("Fundo",     st.session_state.bg_color,   key="sb_bg")
+        st.session_state.accent     = st.color_picker("Accent",    st.session_state.accent,     key="sb_ac")
+        st.session_state.primary    = st.color_picker("Primária",  st.session_state.primary,    key="sb_pr")
+    with cc2:
+        st.session_state.highlight  = st.color_picker("Destaque",  st.session_state.highlight,  key="sb_hl")
+        st.session_state.body_text  = st.color_picker("Corpo",     st.session_state.body_text,  key="sb_bt")
+
+    st.markdown("**Tabelas**")
+    tc1, tc2 = st.columns(2)
+    with tc1:
+        st.session_state.table_header_bg = st.color_picker("Cabeçalho", st.session_state.table_header_bg, key="sb_thbg")
+    with tc2:
+        st.session_state.table_event_bg  = st.color_picker("Evento",    st.session_state.table_event_bg,  key="sb_tebg")
+    st.session_state.use_temp_colors = st.toggle("Cores de temperatura nos scores", st.session_state.use_temp_colors, key="sb_utc")
+
+    st.divider()
+
+    # ── Tipografia ────────────────────────────────────────────────────────────
+    st.markdown("#### 🔤 Tipografia")
+    st.session_state.font_label = st.selectbox(
+        "Fonte", list(FONT_OPTIONS.keys()),
+        index=list(FONT_OPTIONS.keys()).index(st.session_state.font_label),
+        key="sb_font",
+    )
+    fc1, fc2 = st.columns(2)
+    with fc1:
+        st.session_state.font_size   = st.slider("Tamanho (px)", 11, 20, st.session_state.font_size,  key="sb_fs")
+    with fc2:
+        st.session_state.line_height = st.slider("Espaçamento", 1.2, 2.5, st.session_state.line_height, step=0.05, key="sb_lh")
+
+    st.divider()
+
+    # ── Rodapé ────────────────────────────────────────────────────────────────
+    st.markdown("#### 📌 Rodapé")
+    fcols_label = st.radio("Layout", ["1 coluna", "2 colunas"],
+                           index=st.session_state.footer_cols - 1,
+                           horizontal=True, key="sb_fcols")
+    st.session_state.footer_cols = 2 if fcols_label == "2 colunas" else 1
+
+    frc1, frc2 = st.columns(2)
+    with frc1:
+        st.session_state.footer_bg    = st.color_picker("Fundo",  st.session_state.footer_bg,    key="sb_fbg")
+    with frc2:
+        st.session_state.footer_color = st.color_picker("Texto",  st.session_state.footer_color, key="sb_fco")
+
+    label_left = "Coluna esquerda" if st.session_state.footer_cols == 2 else "Texto do rodapé"
+    st.caption(f"**{label_left}** — suporta `**negrito**`, `[link](url)`, `{{date}}`")
+    st.session_state.footer_left = st.text_area("footer_l", st.session_state.footer_left,
+                                                 height=68, label_visibility="collapsed", key="sb_fl")
+    if st.session_state.footer_cols == 2:
+        st.caption("**Coluna direita**")
+        st.session_state.footer_right = st.text_area("footer_r", st.session_state.footer_right,
+                                                      height=68, label_visibility="collapsed", key="sb_fr")
+
+    st.markdown("**Atalhos:**")
+    ex_cols = st.columns(2)
+    examples = {
+        "Simples":      "CEG — UnB · {date}",
+        "Com site":     "CEG — UnB · [Site](https://ceg.unb.br) · {date}",
+        "Links":        "[Site](https://ceg.unb.br) | [E-mail](mailto:ceg@unb.br)",
+        "Negrito":      "**CEG — UnB** · Boletim de Conjuntura · {date}",
+    }
+    for i, (label, ex) in enumerate(examples.items()):
+        with ex_cols[i % 2]:
+            if st.button(label, key=f"ft_ex_{i}", use_container_width=True):
+                st.session_state.footer_left = ex
+                st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN — Tabs: Editor | Preview completo | Guia
+# ══════════════════════════════════════════════════════════════════════════════
+st.markdown("## 📰 Boletim CEG-UnB")
+
+t_editor, t_preview, t_guia = st.tabs(["✏️ Editor", "🔍 Preview completo", "📖 Guia de uso"])
+
+cfg = build_cfg()
+
+# ── TAB 1: EDITOR ─────────────────────────────────────────────────────────────
 with t_editor:
     col_ed, col_pv = st.columns([1, 1], gap="large")
 
     with col_ed:
         st.markdown("##### Conteúdo Markdown")
+
+        # Editor com aparência de IDE (dark)
         md_text = st.text_area(
-            "md", value=st.session_state.md_text,
-            height=540, label_visibility="collapsed", key="md_input"
+            "editor_md",
+            value=st.session_state.md_text,
+            height=520,
+            label_visibility="collapsed",
+            key="md_input",
+            help="Escreva o conteúdo em Markdown. Use # Tema, ## Seção, ### Artigo.",
         )
         st.session_state.md_text = md_text
-        st.caption(
-            "**#** Tema · **##** Seção · **###** Artigo &nbsp;|&nbsp; "
-            "`**negrito**` `*itálico*` `~~tachado~~` `` `código` `` `[link](url)` "
-            "`- lista` `1. numerada` `> citação` `|col1|col2|` "
-            "`{center}...{/center}` `---` `![alt](url)`"
-        )
+
+        # Referência rápida de sintaxe
+        with st.expander("📋 Referência rápida de sintaxe"):
+            st.markdown("""
+| Sintaxe | Resultado |
+|---------|-----------|
+| `# Tema` | Faixa colorida de tema |
+| `## Seção` | Label de seção |
+| `### Artigo` | Título de artigo |
+| `**negrito**` | **negrito** |
+| `*itálico*` | *itálico* |
+| `~~tachado~~` | ~~tachado~~ |
+| `` `código` `` | `código` |
+| `[texto](url)` | link |
+| `- item` | lista com marcador |
+| `1. item` | lista numerada |
+| `> texto` | citação em bloco |
+| `\| col1 \| col2 \|` | tabela |
+| `{center}…{/center}` | texto centralizado |
+| `---` | linha divisória |
+| `![alt](url)` | imagem |
+""")
+
+        # Ações rápidas no editor
+        st.markdown("**Ações rápidas**")
+        qa1, qa2, qa3 = st.columns(3)
+        with qa1:
+            if st.button("🔄 Resetar exemplo", use_container_width=True, key="btn_reset"):
+                st.session_state.md_text = SAMPLE_CONTENT
+                st.rerun()
+        with qa2:
+            if st.button("🧹 Limpar editor", use_container_width=True, key="btn_clear"):
+                st.session_state.md_text = ""
+                st.rerun()
+        with qa3:
+            char_count = len(md_text)
+            word_count = len(md_text.split())
+            st.metric("Palavras", word_count, delta=None)
 
     with col_pv:
-        st.markdown("##### Preview")
-        cfg = build_cfg()
-        bg  = cfg["bg_color"]
+        st.markdown("##### Preview em tempo real")
         email_html = build_email_html(st.session_state.md_text, cfg)
         components.html(
-            f'<div style="background:{bg};padding:20px 14px;border-radius:8px">{email_html}</div>',
-            height=580, scrolling=True
+            f'<div style="background:{cfg["bg_color"]};padding:20px 14px;border-radius:8px">'
+            f'{email_html}</div>',
+            height=580,
+            scrolling=True,
         )
 
     st.divider()
-    cfg2 = build_cfg()
-    full_html = build_full_html(st.session_state.md_text, cfg2)
-    frag_html = build_email_html(st.session_state.md_text, cfg2)
 
-    dc1, dc2, dc3 = st.columns([2, 2, 3])
-    with dc1:
-        st.download_button("⬇️ Baixar HTML completo", data=full_html,
-                           file_name="boletim-ceg-unb.html", mime="text/html",
-                           use_container_width=True)
-    with dc2:
-        st.download_button("📋 Fragmento para Outlook", data=frag_html,
-                           file_name="boletim-outlook.html", mime="text/html",
-                           use_container_width=True)
-    with dc3:
-        st.info("💡 Para enviar pelo Outlook, veja a aba **📖 Guia de uso**.", icon=None)
+    # ── Exportações ───────────────────────────────────────────────────────────
+    st.markdown("##### Exportar")
+    full_html = build_full_html(st.session_state.md_text, cfg)
+    frag_html = build_email_html(st.session_state.md_text, cfg)
 
+    ex1, ex2, ex3, ex4 = st.columns([2, 2, 2, 3])
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 — APARÊNCIA
-# ══════════════════════════════════════════════════════════════════════════════
-with t_aparencia:
-    ap1, ap2 = st.columns([1, 1], gap="large")
-
-    with ap1:
-        # Banner
-        st.markdown("#### 🖼️ Banner")
-        uploaded = st.file_uploader("Imagem (PNG, JPG, GIF)",
-                                    type=["png","jpg","jpeg","gif"],
-                                    help="Será embutida em base64 — funciona offline no Outlook.")
-        if uploaded:
-            raw = uploaded.read()
-            st.session_state.banner_b64 = base64.b64encode(raw).decode()
-            st.session_state.banner_ext = uploaded.type.split("/")[-1].replace("jpeg","jpg")
-            st.success(f"Banner carregado — {len(raw)//1024} KB")
-        if st.session_state.banner_b64:
-            if st.button("🗑️ Remover banner"):
-                st.session_state.banner_b64 = ""
-                st.rerun()
-
-        bh = st.slider("Altura do banner (px)", 60, 360,
-                       st.session_state.banner_height, key="s_banner_h")
-        st.session_state.banner_height = bh
-
-        bf = st.color_picker("Cor do banner (sem imagem)",
-                              st.session_state.banner_fallback, key="s_banner_fb")
-        st.session_state.banner_fallback = bf
-
-        st.divider()
-
-        # Faixa de degradê
-        st.markdown("#### 🌈 Faixa de degradê")
-        gc1, gc2, gc3 = st.columns([1,1,1])
-        with gc1:
-            gl = st.color_picker("Esquerda", st.session_state.grad_left, key="s_gl")
-            st.session_state.grad_left = gl
-        with gc2:
-            gr = st.color_picker("Direita", st.session_state.grad_right, key="s_gr")
-            st.session_state.grad_right = gr
-        with gc3:
-            gh = st.slider("Espessura px", 1, 16, st.session_state.grad_h, key="s_gh")
-            st.session_state.grad_h = gh
-
-        st.divider()
-
-        # Data e identificação
-        st.markdown("#### 📅 Data e identificação")
-        org_v = st.text_input("Organização", st.session_state.org, key="s_org")
-        st.session_state.org = org_v
-        ed_v = st.text_input("Edição / Volume", st.session_state.edition, key="s_ed")
-        st.session_state.edition = ed_v
-        dfmt_v = st.radio("Formato de data", list(DATE_FORMAT_OPTIONS.keys()),
-                          index=list(DATE_FORMAT_OPTIONS.keys()).index(st.session_state.date_fmt_key),
-                          horizontal=True, label_visibility="collapsed", key="s_dfmt")
-        st.session_state.date_fmt_key = dfmt_v
-
-    with ap2:
-        # Cores
-        st.markdown("#### 🎨 Cores")
-        cc1, cc2 = st.columns(2)
-        with cc1:
-            ac = st.color_picker("Acento (temas/links)",   st.session_state.accent,    key="s_ac")
-            st.session_state.accent = ac
-            hi = st.color_picker("Destaque (seções/data)", st.session_state.highlight, key="s_hi")
-            st.session_state.highlight = hi
-            bt = st.color_picker("Texto do corpo",         st.session_state.body_text, key="s_bt")
-            st.session_state.body_text = bt
-        with cc2:
-            pr = st.color_picker("Rodapé / títulos",       st.session_state.primary,   key="s_pr")
-            st.session_state.primary = pr
-            bg = st.color_picker("Fundo da página",         st.session_state.bg_color,  key="s_bg")
-            st.session_state.bg_color = bg
-
-        st.divider()
-
-        # Tipografia
-        st.markdown("#### 🔤 Tipografia")
-        fl = st.selectbox("Fonte", list(FONT_OPTIONS.keys()),
-                          index=list(FONT_OPTIONS.keys()).index(st.session_state.font_label),
-                          key="s_font")
-        st.session_state.font_label = fl
-        tc1, tc2 = st.columns(2)
-        with tc1:
-            fs = st.slider("Tamanho (px)", 12, 22, st.session_state.font_size, key="s_fs")
-            st.session_state.font_size = fs
-        with tc2:
-            lh = st.slider("Entrelinha", 1.2, 2.5, st.session_state.line_height,
-                           step=0.05, format="%.2f", key="s_lh")
-            st.session_state.line_height = lh
-
-        st.divider()
-        st.markdown("#### 📊 Tabelas")
-        tc1, tc2 = st.columns(2)
-        tc1, tc2, tc3 = st.columns(3)
-        with tc1:
-            tbg = st.color_picker("Cabeçalho da tabela",
-                                   st.session_state.table_header_bg, key="s_tbg")
-            st.session_state.table_header_bg = tbg
-        with tc2:
-            tebg = st.color_picker("Linha de evento",
-                                    st.session_state.table_event_bg, key="s_tebg")
-            st.session_state.table_event_bg = tebg
-        with tc3:
-            utc = st.toggle("Cores de temperatura nos scores",
-                             value=st.session_state.use_temp_colors, key="s_utc")
-            st.session_state.use_temp_colors = utc
-        st.caption("Cores de temperatura: 🟢 positivo → 🔴 negativo")
-
-        st.divider()
-        st.markdown("#### Preview rápido")
-        cfg_ap = build_cfg()
-        sample_preview = build_email_html(
-            "## Exemplo de seção\n\n### Título do artigo\n\n"
-            "Texto com **negrito**, *itálico* e [link](https://unb.br).\n\n"
-            "- Item de lista\n- Outro item\n\n> Citação em destaque",
-            cfg_ap
+    with ex1:
+        st.markdown('<div class="action-btn">', unsafe_allow_html=True)
+        st.download_button(
+            "⬇️ HTML completo",
+            data=full_html,
+            file_name="boletim-ceg-unb.html",
+            mime="text/html",
+            use_container_width=True,
+            key="dl_full",
         )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with ex2:
+        st.markdown('<div class="action-btn">', unsafe_allow_html=True)
+        st.download_button(
+            "📋 Fragmento Outlook",
+            data=frag_html,
+            file_name="boletim-outlook.html",
+            mime="text/html",
+            use_container_width=True,
+            key="dl_frag",
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with ex3:
+        st.markdown('<div class="action-btn-accent">', unsafe_allow_html=True)
+        if st.button("📄 Gerar PDF", use_container_width=True, key="btn_pdf"):
+            with st.spinner("Gerando PDF…"):
+                pdf_bytes = _make_pdf(full_html)
+            if pdf_bytes:
+                st.download_button(
+                    "⬇️ Baixar PDF",
+                    data=pdf_bytes,
+                    file_name="boletim-ceg-unb.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key="dl_pdf",
+                )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with ex4:
+        st.info("💡 Para Outlook: baixe o HTML completo → abra no Chrome → Ctrl+A → Ctrl+C → cole no email.", icon=None)
+
+
+# ── TAB 2: PREVIEW COMPLETO ───────────────────────────────────────────────────
+with t_preview:
+    st.markdown("##### Preview completo da newsletter")
+    st.caption("Renderização fiel ao email gerado. Altera a aparência na sidebar à esquerda.")
+
+    # Preview do rodapé isolado
+    with st.expander("🔍 Preview isolado do rodapé"):
+        ftr = _render_footer(cfg)
         components.html(
-            f'<div style="background:{cfg_ap["bg_color"]};padding:16px;border-radius:8px">'
-            f'{sample_preview}</div>',
-            height=380, scrolling=True
+            f'<div style="max-width:560px;margin:0 auto">{ftr}</div>',
+            height=80,
         )
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — RODAPÉ
-# ══════════════════════════════════════════════════════════════════════════════
-with t_rodape:
-    rd1, rd2 = st.columns([1, 1], gap="large")
-
-    with rd1:
-        st.markdown("#### 📌 Configuração do rodapé")
-
-        fcols = st.radio("Layout", ["1 coluna", "2 colunas"],
-                         index=st.session_state.footer_cols - 1,
-                         horizontal=True, key="s_fcols")
-        ncols = 2 if fcols == "2 colunas" else 1
-        st.session_state.footer_cols = ncols
-
-        frc1, frc2 = st.columns(2)
-        with frc1:
-            fbg = st.color_picker("Fundo do rodapé", st.session_state.footer_bg, key="s_fbg")
-            st.session_state.footer_bg = fbg
-        with frc2:
-            fco = st.color_picker("Cor do texto", st.session_state.footer_color, key="s_fco")
-            st.session_state.footer_color = fco
-
-        st.markdown("**Coluna esquerda**" if ncols == 2 else "**Texto do rodapé**")
-        st.caption("Suporta `**negrito**`, `*itálico*`, `[texto](url)` e `{date}` para data automática.")
-        fl_v = st.text_area("footer_left_inp", value=st.session_state.footer_left,
-                             height=80, label_visibility="collapsed", key="s_fl")
-        st.session_state.footer_left = fl_v
-
-        if ncols == 2:
-            st.markdown("**Coluna direita**")
-            fr_v = st.text_area("footer_right_inp", value=st.session_state.footer_right,
-                                 height=80, label_visibility="collapsed", key="s_fr")
-            st.session_state.footer_right = fr_v
-        else:
-            st.session_state.footer_right = ""
-
-        st.markdown("**Exemplos rápidos:**")
-        examples = {
-            "Simples":       "CEG — UnB · {date}",
-            "Com site":      "CEG — UnB · [Site](https://ceg.unb.br) · {date}",
-            "Links duplos":  "[Site](https://ceg.unb.br) | [E-mail](mailto:ceg@unb.br)",
-            "Negrito+data":  "**CEG — UnB** · Boletim de Conjuntura · {date}",
-        }
-        cols_ex = st.columns(len(examples))
-        for i, (label, ex) in enumerate(examples.items()):
-            with cols_ex[i]:
-                if st.button(label, key=f"ex_{label}", use_container_width=True):
-                    st.session_state.footer_left = ex
-                    st.rerun()
-
-    with rd2:
-        st.markdown("#### Preview do rodapé")
-        cfg_rd = build_cfg()
-        ftr_only = _render_footer(cfg_rd)
-        components.html(
-            f'<div style="max-width:560px;margin:0 auto;font-family:sans-serif">{ftr_only}</div>',
-            height=100
-        )
-        st.markdown("#### Preview completo")
-        full_prev = build_email_html("## Seção\n\n### Artigo\n\nCorpo do texto de exemplo.", cfg_rd)
-        components.html(
-            f'<div style="background:{cfg_rd["bg_color"]};padding:16px;border-radius:8px">'
-            f'{full_prev}</div>',
-            height=380, scrolling=True
-        )
+    # Preview completo
+    email_full = build_email_html(st.session_state.md_text, cfg)
+    components.html(
+        f'<div style="background:{cfg["bg_color"]};padding:32px 16px;min-height:600px">'
+        f'{email_full}</div>',
+        height=720,
+        scrolling=True,
+    )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 — GUIA DE USO
-# ══════════════════════════════════════════════════════════════════════════════
+# ── TAB 3: GUIA ───────────────────────────────────────────────────────────────
 with t_guia:
     g1, g2 = st.columns([1, 1], gap="large")
 
@@ -398,9 +547,11 @@ Se usar só `#` e `##`, o parser trata `#` como seção e `##` como artigo.
 2. Segundo
 ```
 
-**Duas colunas:**
+**Tabela:**
 ```
-| Coluna esquerda | Coluna direita |
+| Coluna 1 | Coluna 2 |
+|----------|----------|
+| dado     | dado     |
 ```
 
 **Centralizado:**
@@ -421,40 +572,38 @@ Se usar só `#` e `##`, o parser trata `#` como seção e `##` como artigo.
 
     with g2:
         st.markdown("""
+### 💾 Perfis de aparência
+
+Salve qualquer combinação de cores, fontes e rodapé como um **perfil nomeado**.
+Perfis ficam na pasta `profiles/` como arquivos JSON — você pode versionar no Git ou compartilhar.
+
+Para criar: configure a aparência na sidebar → expanda **Perfis de aparência** → dê um nome → **Salvar**.
+
+---
+
 ### 📧 Como enviar pelo Outlook
 
-O Outlook não abre `.html` como corpo diretamente —
-o método mais confiável é copiar o conteúdo renderizado.
+#### ✅ Método recomendado — Chrome + Outlook Desktop
+
+1. Clique em **"HTML completo"** para baixar
+2. Abra o arquivo no **Google Chrome**
+3. `Ctrl+A` → `Ctrl+C`
+4. Abra o **Outlook Desktop**, novo email → cole com `Ctrl+V`
+5. A formatação é preservada — envie normalmente
+
+> ⚠️ Use o Outlook **Desktop** (não o web). O Outlook Web pode perder formatação.
 
 ---
 
-#### ✅ Método 1 — Chrome + Outlook Desktop *(recomendado)*
+#### 📄 Exportar como PDF
 
-1. Clique em **"Baixar HTML completo"**
-2. Abra o arquivo `.html` no **Google Chrome**
-3. `Ctrl+A` → selecionar tudo
-4. `Ctrl+C` → copiar
-5. Abra o **Outlook Desktop** (não o web)
-6. Novo email → clique no corpo → `Ctrl+V`
-7. A formatação é preservada — envie normalmente
-
-> ⚠️ Use o Outlook **Desktop**.
-> O Outlook Web pode perder parte da formatação.
-
----
-
-#### 🔁 Método 2 — Word como intermediário
-
-1. Abra o `.html` no Chrome, copie tudo
-2. Cole no **Word** e salve como `.docx`
-3. No Outlook: **Inserir → Objeto → Texto do arquivo** → selecione o `.docx`
+Clique em **"Gerar PDF"** na aba Editor. O PDF é gerado pelo WeasyPrint com fidelidade ao layout do email.
 
 ---
 
 #### ⚙️ Configuração do Outlook
 
 Verifique se o Outlook está em modo HTML:
-
 `Arquivo → Opções → Email → Formato de mensagem → HTML`
 
 ---
@@ -463,16 +612,8 @@ Verifique se o Outlook está em modo HTML:
 
 | Tipo | Como funciona |
 |------|--------------|
-| **Banner** (upload aqui) | Embutida em base64 — funciona sem internet |
-| **Imagens no corpo** `![](url)` | URL externa — destinatário precisa de internet |
-
----
-
-#### 🧪 Antes de enviar
-
-- Envie para você mesmo primeiro
-- Teste no celular (Outlook mobile)
-- Clientes como Gmail podem renderizar diferente
+| **Banner** (upload na sidebar) | Embutida em base64 — funciona offline |
+| **Imagens no corpo** `![](url)` | URL externa — requer internet |
 
 ---
 

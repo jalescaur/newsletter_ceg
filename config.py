@@ -1,41 +1,49 @@
 """
 config.py — Configurações padrão, paletas, fontes, formatos de data.
+Inclui persistência local via JSON para salvar/carregar perfis de aparência.
 """
+
+from __future__ import annotations
+import json
+import os
+from pathlib import Path
+
+# ── Diretório de perfis ────────────────────────────────────────────────────────
+PROFILES_DIR = Path("profiles")
+PROFILES_DIR.mkdir(exist_ok=True)
 
 # ── Defaults ──────────────────────────────────────────────────────────────────
 DEFAULT_CONFIG = {
     # Identificação
     "org":            "CEG — UnB",
-    "edition":        "Mai. 2026",
-    "date_format":    "extenso",       # extenso | precisa | ddmmyyyy
+    "edition":        "Jun. 2026",
+    "date_format":    "extenso",
     # Banner
-    "banner_img_b64": "",              # base64 da imagem; "" = sem imagem
-    "banner_img_ext": "png",           # extensão para o mime type
-    "banner_height":  "180px",         # altura do banner em CSS
-    # Faixa de degradê
-    "grad_left":      "#00a99d",
-    "grad_right":     "#b5a98a",
-    "grad_height":    "4",             # px
-    # Cores
-    "bg_color":       "#f0ede8",
-    "primary":        "#0f0f0f",       # rodapé + títulos de artigo
-    "accent":         "#00a99d",       # rótulos de tema
-    "highlight":      "#b5a98a",       # labels de seção / data
-    "table_event_bg": "#b5a98a",       # cor da linha de evento nas tabelas
-    "body_text":      "#3a3530",       # cor padrão do corpo
+    "banner_img_b64": "",
+    "banner_img_ext": "png",
+    "banner_height":  "160px",
+    # Cores (fixas pelo identidade CEG — editáveis na sidebar)
+    "bg_color":       "#f2f2f2",
+    "primary":        "#26619C",
+    "accent":         "#26619C",
+    "highlight":      "#acac95",
+    "table_event_bg": "#acac95",
+    "body_text":      "#2e2e2e",
     # Tipografia
     "body_font":      "Georgia, 'Times New Roman', serif",
-    "font_size":      "14",            # px
-    "line_height":    "1.78",
+    "font_size":      "14",
+    "line_height":    "1.25",
     # Tabela
-    "table_header_bg": "#00a99d",  # cor do cabeçalho das tabelas (independente do accent)
-    "use_temp_colors":  True,       # cores de temperatura nos scores
-    # Rodapé
-    "footer_cols":    1,               # 1 ou 2 colunas
+    "table_header_bg": "#26619C",
+    "use_temp_colors":  True,
+    # Rodapé (fixo no renderer — mantidos para compatibilidade)
+    "footer_cols":    1,
     "footer_left":    "CEG — UnB · {date}",
     "footer_right":   "",
-    "footer_bg":      "#0f0f0f",
-    "footer_color":   "#b5a98a",
+    "footer_bg":      "#26619C",
+    "footer_color":   "#acac95",
+    # Banner fallback
+    "banner_fallback": "#26619C",
 }
 
 # ── Fontes web-safe ───────────────────────────────────────────────────────────
@@ -51,9 +59,9 @@ FONT_OPTIONS = {
 
 # ── Formatos de data ──────────────────────────────────────────────────────────
 DATE_FORMAT_OPTIONS = {
-    "Por extenso   (26 de maio de 2026)": "extenso",
-    "Precisa       (maio de 2026)":        "precisa",
-    "DD/MM/AAAA    (26/05/2026)":          "ddmmyyyy",
+    "Por extenso   (26 de junho de 2026)": "extenso",
+    "Precisa       (junho de 2026)":        "precisa",
+    "DD/MM/AAAA    (26/06/2026)":           "ddmmyyyy",
 }
 
 # ── Conteúdo de exemplo ───────────────────────────────────────────────────────
@@ -80,7 +88,37 @@ A Comissão Europeia rebaixou sua previsão de crescimento do Eurozone de 1,2% p
 
 Pela **MP 1.340/2026**, o governo brasileiro zera PIS/Cofins sobre diesel. O IPCA-15 de março mostrou que o diesel subiu ~~2,5%~~ **3,77%** apesar dos subsídios.
 
-{center}Próxima edição: **junho de 2026**{/center}
+{center}Próxima edição: **julho de 2026**{/center}
 """
 
 FOOTER_SAMPLE = "CEG — UnB · {date} | [Site](https://ceg.unb.br) | [Contato](mailto:boletim@ceg.unb.br)"
+
+
+# ── Persistência de perfis ────────────────────────────────────────────────────
+
+def list_profiles() -> list[str]:
+    """Retorna lista de perfis salvos (sem extensão)."""
+    return sorted(
+        p.stem for p in PROFILES_DIR.glob("*.json")
+    )
+
+def save_profile(name: str, cfg: dict) -> None:
+    """Salva um perfil de configuração (exclui banner_img_b64 por tamanho)."""
+    safe = {k: v for k, v in cfg.items() if k != "banner_img_b64"}
+    path = PROFILES_DIR / f"{name}.json"
+    path.write_text(json.dumps(safe, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def load_profile(name: str) -> dict:
+    """Carrega um perfil e mescla com DEFAULT_CONFIG."""
+    path = PROFILES_DIR / f"{name}.json"
+    if not path.exists():
+        return dict(DEFAULT_CONFIG)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    merged = dict(DEFAULT_CONFIG)
+    merged.update(data)
+    return merged
+
+def delete_profile(name: str) -> None:
+    path = PROFILES_DIR / f"{name}.json"
+    if path.exists():
+        path.unlink()
