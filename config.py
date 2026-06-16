@@ -18,6 +18,11 @@ DEFAULT_CONFIG = {
     "org":            "CEG — UnB",
     "edition":        "Jun. 2026",
     "date_format":    "extenso",
+    # Produto
+    "product_name":    "Risco Internacional",
+    "product_tagline": "Um produto do Laboratório de Análise de Risco e Conjuntura",
+    # Editorial
+    "editorial":       "",
     # Banner
     "banner_img_b64": "",
     "banner_img_ext": "png",

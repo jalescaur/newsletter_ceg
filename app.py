@@ -102,6 +102,9 @@ _ss("banner_ext",       "png")
 # Aparência (carregada do DEFAULT_CONFIG — persistida via perfis)
 _ss("org",              DEFAULT_CONFIG["org"])
 _ss("edition",          DEFAULT_CONFIG["edition"])
+_ss("product_name",     DEFAULT_CONFIG["product_name"])
+_ss("product_tagline",  DEFAULT_CONFIG["product_tagline"])
+_ss("editorial",        DEFAULT_CONFIG["editorial"])
 _ss("date_fmt_key",     list(DATE_FORMAT_OPTIONS.keys())[0])
 _ss("banner_height",    int(DEFAULT_CONFIG["banner_height"].replace("px","")))
 _ss("banner_fallback",  DEFAULT_CONFIG["banner_fallback"])
@@ -128,6 +131,9 @@ def build_cfg() -> dict:
     return {
         "org":                st.session_state.org,
         "edition":            st.session_state.edition,
+        "product_name":       st.session_state.product_name,
+        "product_tagline":    st.session_state.product_tagline,
+        "editorial":          st.session_state.editorial,
         "date_format":        DATE_FORMAT_OPTIONS[st.session_state.date_fmt_key],
         "banner_img_b64":     st.session_state.banner_b64,
         "banner_img_ext":     st.session_state.banner_ext,
@@ -159,6 +165,9 @@ def _apply_profile_to_ss(cfg: dict):
 
     st.session_state.org           = cfg.get("org", DEFAULT_CONFIG["org"])
     st.session_state.edition       = cfg.get("edition", DEFAULT_CONFIG["edition"])
+    st.session_state.product_name  = cfg.get("product_name",    DEFAULT_CONFIG["product_name"])
+    st.session_state.product_tagline = cfg.get("product_tagline", DEFAULT_CONFIG["product_tagline"])
+    st.session_state.editorial     = cfg.get("editorial",        DEFAULT_CONFIG["editorial"])
     st.session_state.date_fmt_key  = date_map_inv.get(cfg.get("date_format","extenso"), list(DATE_FORMAT_OPTIONS.keys())[0])
     st.session_state.banner_height = int(cfg.get("banner_height","160px").replace("px",""))
     st.session_state.banner_fallback = cfg.get("banner_fallback", DEFAULT_CONFIG["banner_fallback"])
@@ -181,10 +190,16 @@ def _apply_profile_to_ss(cfg: dict):
 
 
 def _make_pdf(html_full: str) -> bytes:
-    """Gera PDF a partir do HTML usando WeasyPrint."""
+    """Gera PDF página única (scrollável) usando WeasyPrint."""
     try:
-        from weasyprint import HTML
-        return HTML(string=html_full).write_pdf()
+        from weasyprint import HTML, CSS
+        # Página única e larga — perfeita para rolamento no celular
+        scroll_css = CSS(string=(
+            "@page { size: 600px 999999px; margin: 0; }"
+            "body { margin: 0; padding: 20px 0; }"
+            "p, li, blockquote, table { page-break-inside: avoid; }"
+        ))
+        return HTML(string=html_full).write_pdf(stylesheets=[scroll_css])
     except Exception as e:
         st.error(f"Erro ao gerar PDF: {e}")
         return b""
@@ -241,6 +256,8 @@ with st.sidebar:
     st.markdown("#### 🏛️ Identificação")
     st.session_state.org      = st.text_input("Organização",     st.session_state.org,     key="sb_org")
     st.session_state.edition  = st.text_input("Edição / Volume", st.session_state.edition, key="sb_ed")
+    st.session_state.product_name    = st.text_input("Nome do produto",  st.session_state.product_name,    key="sb_pname")
+    st.session_state.product_tagline = st.text_input("Tagline",          st.session_state.product_tagline, key="sb_ptag")
     st.session_state.date_fmt_key = st.selectbox(
         "Formato de data",
         list(DATE_FORMAT_OPTIONS.keys()),
@@ -329,6 +346,11 @@ with st.sidebar:
         st.session_state.footer_right = st.text_area("footer_r", st.session_state.footer_right,
                                                       height=68, label_visibility="collapsed", key="sb_fr")
 
+    st.caption("**Editorial** — nomes separados por vírgula ou quebra de linha (deixe vazio para omitir)")
+    st.session_state.editorial = st.text_area("editorial_field", st.session_state.editorial,
+                                               height=68, label_visibility="collapsed", key="sb_editorial",
+                                               placeholder="Ex: João Silva, Maria Souza")
+
     st.markdown("**Atalhos:**")
     ex_cols = st.columns(2)
     examples = {
@@ -391,6 +413,8 @@ with t_editor:
 | `{center}…{/center}` | texto centralizado |
 | `---` | linha divisória |
 | `![alt](url)` | imagem |
+| `$E = mc^2$` | LaTeX inline |
+| `$$\frac{1}{2}$$` | LaTeX em bloco |
 """)
 
         # Ações rápidas no editor
@@ -455,8 +479,9 @@ with t_editor:
     with ex3:
         st.markdown('<div class="action-btn-accent">', unsafe_allow_html=True)
         if st.button("📄 Gerar PDF", use_container_width=True, key="btn_pdf"):
-            with st.spinner("Gerando PDF…"):
-                pdf_bytes = _make_pdf(full_html)
+            with st.spinner("Gerando PDF scrollável…"):
+                pdf_html = build_full_html(st.session_state.md_text, cfg, for_pdf=True)
+                pdf_bytes = _make_pdf(pdf_html)
             if pdf_bytes:
                 st.download_button(
                     "⬇️ Baixar PDF",
@@ -466,6 +491,7 @@ with t_editor:
                     use_container_width=True,
                     key="dl_pdf",
                 )
+                st.caption("✅ PDF página única — ideal para rolamento no celular")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with ex4:

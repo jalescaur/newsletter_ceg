@@ -71,6 +71,22 @@ _OL_RE      = re.compile(r"^\d+\.\s+(.+)")
 _UL_RE      = re.compile(r"^[-*]\s+(.+)")
 _QUOTE_RE   = re.compile(r"^>\s*(.*)")
 _CENTER_RE  = re.compile(r"^\{center\}(.*)\{/center\}$", re.DOTALL)
+_DISPLAY_MATH_RE = re.compile(r"^\$\$(.+?)\$\$\s*$", re.DOTALL)
+
+
+# ── LaTeX → MathML ────────────────────────────────────────────────────────────
+
+def _latex_to_mathml(expr: str, display: str = "inline") -> str:
+    """Converte LaTeX em MathML. Fallback para <code> se latex2mathml não estiver instalado."""
+    try:
+        from latex2mathml.converter import convert
+        return convert(expr.strip(), display=display)
+    except ImportError:
+        delim = "$$" if display == "block" else "$"
+        return f'<code style="font-family:monospace">{delim}{expr.strip()}{delim}</code>'
+    except Exception:
+        delim = "$$" if display == "block" else "$"
+        return f'<code style="font-family:monospace">{delim}{expr.strip()}{delim}</code>'
 
 def _parse_table_row(line: str) -> List[str]:
     """Extrai células de uma linha de tabela Markdown."""
@@ -93,8 +109,15 @@ def _is_sep_row(line: str) -> bool:
 
 # Inline: aplicados sobre texto puro
 def inline(text: str) -> str:
-    """Aplica formatação inline Markdown → HTML."""
-    # Escapa < e > para segurança (exceto tags já geradas)
+    """Aplica formatação inline Markdown → HTML. Suporta LaTeX $...$ e $$...$$."""
+    # LaTeX display $$...$$ antes de inline para não confundir delimitadores
+    text = re.sub(r"\$\$(.+?)\$\$",
+                  lambda m: _latex_to_mathml(m.group(1), "block"),
+                  text, flags=re.DOTALL)
+    # LaTeX inline $...$
+    text = re.sub(r"\$(.+?)\$",
+                  lambda m: _latex_to_mathml(m.group(1), "inline"),
+                  text)
     # Negrito+itálico (***) antes de negrito e itálico
     text = re.sub(r"\*\*\*(.+?)\*\*\*", r"<strong><em>\1</em></strong>", text)
     text = re.sub(r"\*\*(.+?)\*\*",     r"<strong>\1</strong>", text)
@@ -179,6 +202,33 @@ def _parse_blocks(raw_lines: list[str]) -> List[Block]:
         # Divisória
         if stripped in ("---", "***", "___"):
             blocks.append(DividerBlock())
+            i += 1
+            continue
+
+        # Bloco LaTeX $$...$$
+        if stripped.startswith("$$"):
+            inner = stripped[2:]
+            if inner.endswith("$$"):
+                # linha única: $$expr$$
+                expr = inner[:-2]
+            else:
+                # multilinha: coleta até fechar $$
+                math_lines = [inner] if inner else []
+                i += 1
+                while i < len(raw_lines):
+                    ns = raw_lines[i].strip()
+                    if ns.endswith("$$"):
+                        math_lines.append(ns[:-2])
+                        i += 1
+                        break
+                    math_lines.append(ns)
+                    i += 1
+                expr = "\n".join(math_lines)
+            mathml = _latex_to_mathml(expr, "block")
+            blocks.append(TextBlock(
+                text=f'<div style="text-align:center;margin:10px 0">{mathml}</div>',
+                align="center",
+            ))
             i += 1
             continue
 

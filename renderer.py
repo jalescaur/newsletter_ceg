@@ -182,9 +182,9 @@ def _h1(title: str, font: str, size: str) -> str:
     )
 
 def _h2(title: str, font: str, size: str) -> str:
-    """## — negrito preto, fonte média"""
+    """## — negrito preto, mesmo tamanho do texto"""
     return (
-        f'<p style="margin:14px 0 8px;font-size:{int(size)+4}px;'
+        f'<p style="margin:14px 0 8px;font-size:{size}px;'
         f'font-weight:700;font-style:normal;color:{COLOR_H2};'
         f'font-family:{font};line-height:1.25">{title}</p>'
     )
@@ -270,10 +270,10 @@ def _render_header(cfg: dict) -> str:
         f'{_fmt_date_today()}</p>'
         f'<p style="margin:0 0 6px;font-size:26px;font-weight:700;'
         f'color:{COLOR_H1};font-family:{FONT_BODY};letter-spacing:-.01em;line-height:1.1">'
-        f'Risco Internacional</p>'
+        f'{cfg.get("product_name","Risco Internacional")}</p>'
         f'<p style="margin:0;font-size:11px;color:{COLOR_SECONDARY};'
         f'font-family:{FONT_UI};font-style:italic;letter-spacing:.04em">'
-        f'Um produto do Laboratório de Análise de Risco e Conjuntura</p>'
+        f'{cfg.get("product_tagline","Um produto do Laboratório de Análise de Risco e Conjuntura")}</p>'
         f'</div>'
         f'<div style="height:3px;background:linear-gradient(90deg,{COLOR_PRIMARY} 0%,{COLOR_SECONDARY} 100%)"></div>'
     )
@@ -283,6 +283,16 @@ def _render_header(cfg: dict) -> str:
 
 def _render_footer(cfg: dict) -> str:
     next_ed = _next_wednesday()
+    editorial = cfg.get("editorial", "").strip()
+    editorial_html = ""
+    if editorial:
+        editorial_html = (
+            f'<p style="margin:0 0 10px;font-size:11px;color:rgba(255,255,255,.85);'
+            f'font-family:{FONT_UI};text-align:center;line-height:1.6">'
+            f'<strong style="color:#ffffff;letter-spacing:.04em">Editorial</strong><br>'
+            f'{editorial}</p>'
+            f'<div style="height:1px;background:rgba(255,255,255,.2);margin:0 0 14px"></div>'
+        )
     return (
         f'<div style="background:{COLOR_PRIMARY};padding:20px 28px 16px">'
         f'<p style="margin:0 0 14px;font-size:12px;color:#ffffff;'
@@ -291,19 +301,24 @@ def _render_footer(cfg: dict) -> str:
         f'Entre em contato — teremos prazer em conversar.<br>'
         f'<strong>Próxima edição: {next_ed}</strong></p>'
         f'<div style="height:1px;background:rgba(255,255,255,.2);margin:0 0 14px"></div>'
+        f'{editorial_html}'
         f'<p style="margin:0 0 6px;font-size:11px;font-family:{FONT_UI};text-align:center">'
         f'<a href="{CEG_SITE}" target="_blank" '
-        f'style="color:{COLOR_SECONDARY};text-decoration:none;font-weight:600;letter-spacing:.04em">'
+        f'style="color:#ffffff;text-decoration:none;font-weight:600;letter-spacing:.04em">'
         f'{CEG_FULL_NAME}</a></p>'
         f'<p style="margin:0 0 6px;font-size:11px;font-family:{FONT_UI};text-align:center">'
-        f'<a href="mailto:{CEG_EMAIL}" style="color:{COLOR_SECONDARY};text-decoration:none">'
+        f'<a href="mailto:{CEG_EMAIL}" style="color:#ffffff;text-decoration:none">'
         f'{CEG_EMAIL}</a></p>'
         f'<p style="margin:0 0 12px;font-size:10px;color:rgba(255,255,255,.65);'
         f'font-family:{FONT_UI};text-align:center;line-height:1.6">{IREL_ADDRESS}</p>'
-        f'<p style="margin:0;font-size:9.5px;color:rgba(255,255,255,.5);'
+        f'<p style="margin:0 0 8px;font-size:9.5px;color:rgba(255,255,255,.5);'
         f'font-family:{FONT_UI};text-align:center;letter-spacing:.03em">'
         f'© {datetime.date.today().year} {CEG_FULL_NAME} — Todos os direitos reservados. '
         f'Reprodução parcial ou total permitida mediante citação da fonte.</p>'
+        # TODO: inserir URL da nota metodológica abaixo (substituir # pelo link real)
+        f'<p style="margin:0;font-size:9.5px;font-family:{FONT_UI};text-align:center">'
+        f'<a href="#" style="color:rgba(255,255,255,.4);text-decoration:none;letter-spacing:.03em">'
+        f'Nota Metodológica</a></p>'
         f'</div>'
     )
 
@@ -328,13 +343,22 @@ def build_email_html(text: str, cfg: dict) -> str:
         f'</div>'
     )
 
-def build_full_html(text: str, cfg: dict) -> str:
+def build_full_html(text: str, cfg: dict, for_pdf: bool = False) -> str:
     email = build_email_html(text, cfg)
+    pdf_css = (
+        '<style>'
+        '@page { size: 600px 999999px; margin: 0; }'
+        'body { margin: 0; padding: 20px 0; }'
+        'p, li, blockquote, table { page-break-inside: avoid; }'
+        'h1, h2, h3 { page-break-after: avoid; }'
+        '</style>'
+    ) if for_pdf else ""
     return (
         f'<!DOCTYPE html><html lang="pt-BR"><head>'
         f'<meta charset="UTF-8">'
         f'<meta name="viewport" content="width=device-width,initial-scale=1">'
         f'<title>Risco Internacional — CEG-UnB</title>'
+        f'{pdf_css}'
         f'</head><body style="margin:0;padding:40px 16px;background:{COLOR_BG_EMAIL}">'
         f'{email}</body></html>'
     )
