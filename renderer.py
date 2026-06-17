@@ -23,7 +23,7 @@ MONTHS_PT = ["", "janeiro", "fevereiro", "março", "abril", "maio", "junho",
              "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"]
 
 # ── Constantes CEG ────────────────────────────────────────────────────────────
-HEADER_IMG_URL  = "https://i.ibb.co/CpsGNhxg/site-header.png"
+HEADER_IMG_URL  = "http://estudosglobais.unb.br/wp-content/uploads/2026/06/header_nws.png"
 COLOR_PRIMARY   = "#26619C"
 COLOR_SECONDARY = "#acac95"
 COLOR_BG_EMAIL  = "#f2f2f2"
@@ -184,7 +184,7 @@ def _h1(title: str, font: str, size: str) -> str:
 def _h2(title: str, font: str, size: str) -> str:
     """## — negrito preto, mesmo tamanho do texto"""
     return (
-        f'<p style="margin:14px 0 8px;font-size:{size}px;'
+        f'<p style="margin:16px 0 8px;font-size:{size}px;'
         f'font-weight:700;font-style:normal;color:{COLOR_H2};'
         f'font-family:{font};line-height:1.25">{title}</p>'
     )
