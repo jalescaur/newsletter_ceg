@@ -32,7 +32,7 @@ COLOR_TEXT      = "#2e2e2e"
 COLOR_H1        = "#26619C"   # # — negrito azul
 COLOR_H2        = "#1a1a1a"   # ## — negrito preto
 COLOR_H3        = "#555555"   # ### — itálico cinza
-FONT_BODY       = "Georgia, 'Times New Roman', serif"
+FONT_BODY       = "Arial, Helvetica, sans-serif"
 FONT_UI         = "Arial, Helvetica, sans-serif"
 
 IREL_ADDRESS = (
@@ -173,28 +173,28 @@ def _render_block(block, cfg: dict) -> str:
 
 # ── Títulos ───────────────────────────────────────────────────────────────────
 
-def _h1(title: str, font: str, size: str) -> str:
+def _h1(title: str, font: str, size: str, lh: str = "1.5") -> str:
     """# — negrito azul, fonte grande, espaço acima"""
     return (
         f'<p style="margin:20px 0 10px;font-size:{int(size)+8}px;'
         f'font-weight:700;font-style:normal;color:{COLOR_H1};'
-        f'font-family:{font};line-height:1.15">{title}</p>'
+        f'font-family:{font};line-height:{lh}">{title}</p>'
     )
 
-def _h2(title: str, font: str, size: str) -> str:
+def _h2(title: str, font: str, size: str, lh: str = "1.5") -> str:
     """## — negrito preto, mesmo tamanho do texto"""
     return (
         f'<p style="margin:16px 0 8px;font-size:{size}px;'
         f'font-weight:700;font-style:normal;color:{COLOR_H2};'
-        f'font-family:{font};line-height:1.25">{title}</p>'
+        f'font-family:{font};line-height:{lh}">{title}</p>'
     )
 
-def _h3(title: str, font: str, size: str) -> str:
+def _h3(title: str, font: str, size: str, lh: str = "1.5") -> str:
     """### — itálico cinza, mesmo tamanho do texto"""
     return (
         f'<p style="margin:10px 0 6px;font-size:{size}px;'
         f'font-weight:400;font-style:italic;color:{COLOR_H3};'
-        f'font-family:{font};line-height:1.3">{title}</p>'
+        f'font-family:{font};line-height:{lh}">{title}</p>'
     )
 
 
@@ -205,11 +205,12 @@ def _render_article(art, cfg: dict, as_level: int = 3) -> str:
     as_level=3 → ### estilo (itálico cinza)
     as_level=2 → ## estilo (negrito preto)  ← usado quando MD tem só 2 níveis
     """
-    font   = cfg.get("body_font", FONT_BODY)
-    size   = cfg.get("font_size", "14")
+    font = FONT_BODY
+    size = cfg.get("font_size", "14")
+    lh   = cfg.get("line_height", "1.5")
     blocks = "".join(_render_block(b, cfg) for b in art.blocks)
     if art.title:
-        title_html = _h2(art.title, font, size) if as_level == 2 else _h3(art.title, font, size)
+        title_html = _h2(art.title, font, size, lh) if as_level == 2 else _h3(art.title, font, size, lh)
     else:
         title_html = ""
     return f'<div style="margin-bottom:8px">{title_html}{blocks}</div>'
@@ -219,13 +220,13 @@ def _render_section(sec, cfg: dict, as_level: int = 2) -> str:
     as_level=2 → ## estilo (negrito preto)
     as_level=1 → # estilo (negrito azul)  ← usado quando MD tem só 2 níveis
     """
-    font     = cfg.get("body_font", FONT_BODY)
-    size     = cfg.get("font_size", "14")
-    # artigos um nível abaixo da seção
+    font = FONT_BODY
+    size = cfg.get("font_size", "14")
+    lh   = cfg.get("line_height", "1.5")
     art_level = as_level + 1
     articles  = "".join(_render_article(a, cfg, as_level=art_level) for a in sec.articles)
     if sec.title:
-        title_html = _h1(sec.title, font, size) if as_level == 1 else _h2(sec.title, font, size)
+        title_html = _h1(sec.title, font, size, lh) if as_level == 1 else _h2(sec.title, font, size, lh)
     else:
         title_html = ""
     return f'<div style="margin-bottom:16px">{title_html}{articles}</div>'
@@ -235,15 +236,14 @@ def _render_theme(theme, cfg: dict) -> str:
     Com 3 níveis: theme.title existe → # (h1), sections como h2, articles como h3
     Com 2 níveis: theme.title vazio  → sections como h1, articles como h2
     """
-    font = cfg.get("body_font", FONT_BODY)
+    font = FONT_BODY
     size = cfg.get("font_size", "14")
+    lh   = cfg.get("line_height", "1.5")
 
     if theme.title:
-        # 3 níveis: # → h1, ## → h2, ### → h3
-        sec_level = 2
-        title_html = _h1(theme.title, font, size)
+        sec_level  = 2
+        title_html = _h1(theme.title, font, size, lh)
     else:
-        # 2 níveis: # → h1 (via section), ## → h2 (via article)
         sec_level  = 1
         title_html = ""
 
@@ -268,8 +268,9 @@ def _render_header(cfg: dict) -> str:
         f'<p style="margin:0 0 10px;font-size:11px;color:{COLOR_SECONDARY};'
         f'font-family:{FONT_UI};letter-spacing:.1em;text-transform:uppercase">'
         f'{_fmt_date_today()}</p>'
-        f'<p style="margin:0 0 6px;font-size:26px;font-weight:700;'
-        f'color:{COLOR_H1};font-family:{FONT_BODY};letter-spacing:-.01em;line-height:1.1">'
+        f'<p style="margin:0 0 6px;font-size:{cfg.get("product_name_size",26)}px;'
+        f'font-weight:{"700" if cfg.get("product_name_bold",True) else "400"};'
+        f'color:{COLOR_H1};font-family:{FONT_UI};letter-spacing:-.01em;line-height:1.2">'
         f'{cfg.get("product_name","Risco Internacional")}</p>'
         f'<p style="margin:0;font-size:11px;color:{COLOR_SECONDARY};'
         f'font-family:{FONT_UI};font-style:italic;letter-spacing:.04em">'
@@ -287,10 +288,14 @@ def _render_footer(cfg: dict) -> str:
     editorial_html = ""
     if editorial:
         editorial_html = (
-            f'<p style="margin:0 0 10px;font-size:11px;color:rgba(255,255,255,.85);'
+            f'<p style="margin:0 0 4px;font-size:11px;color:rgba(255,255,255,.85);'
             f'font-family:{FONT_UI};text-align:center;line-height:1.6">'
             f'<strong style="color:#ffffff;letter-spacing:.04em">Editorial</strong><br>'
             f'{editorial}</p>'
+            # TODO: inserir URL da nota metodológica abaixo (substituir # pelo link real)
+            f'<p style="margin:0 0 12px;font-size:9.5px;font-family:{FONT_UI};text-align:center">'
+            f'<a href="#" style="color:rgba(255,255,255,.4);text-decoration:none;letter-spacing:.03em">'
+            f'Nota Metodológica</a></p>'
             f'<div style="height:1px;background:rgba(255,255,255,.2);margin:0 0 14px"></div>'
         )
     return (
@@ -311,14 +316,10 @@ def _render_footer(cfg: dict) -> str:
         f'{CEG_EMAIL}</a></p>'
         f'<p style="margin:0 0 12px;font-size:10px;color:rgba(255,255,255,.65);'
         f'font-family:{FONT_UI};text-align:center;line-height:1.6">{IREL_ADDRESS}</p>'
-        f'<p style="margin:0 0 8px;font-size:9.5px;color:rgba(255,255,255,.5);'
+        f'<p style="margin:0;font-size:9.5px;color:rgba(255,255,255,.5);'
         f'font-family:{FONT_UI};text-align:center;letter-spacing:.03em">'
         f'© {datetime.date.today().year} {CEG_FULL_NAME} — Todos os direitos reservados. '
         f'Reprodução parcial ou total permitida mediante citação da fonte.</p>'
-        # TODO: inserir URL da nota metodológica abaixo (substituir # pelo link real)
-        f'<p style="margin:0;font-size:9.5px;font-family:{FONT_UI};text-align:center">'
-        f'<a href="#" style="color:rgba(255,255,255,.4);text-decoration:none;letter-spacing:.03em">'
-        f'Nota Metodológica</a></p>'
         f'</div>'
     )
 
@@ -333,10 +334,9 @@ def build_email_html(text: str, cfg: dict) -> str:
         f'<p style="font-size:13px;color:#aaa;font-style:italic">'
         f'Cole o conteúdo no editor. Use # Título, ## Subtítulo, ### Subseção.</p>'
     )
-    font = cfg.get("body_font", FONT_BODY)
     return (
         f'<div style="background:{COLOR_BG_BODY};max-width:560px;margin:0 auto;'
-        f'font-family:{font};border:1px solid #ddd;overflow:hidden">'
+        f'font-family:{FONT_BODY};border:1px solid #ddd;overflow:hidden">'
         f'{_render_header(cfg)}'
         f'<div style="padding:24px 28px 28px;background:{COLOR_BG_BODY}">{body}</div>'
         f'{_render_footer(cfg)}'

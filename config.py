@@ -19,10 +19,12 @@ DEFAULT_CONFIG = {
     "edition":        "Jun. 2026",
     "date_format":    "extenso",
     # Produto
-    "product_name":    "Risco Internacional",
-    "product_tagline": "Um produto do Laboratório de Análise de Risco e Conjuntura",
+    "product_name":      "Risco Internacional",
+    "product_tagline":   "Um produto do Laboratório de Análise de Risco e Conjuntura",
+    "product_name_size": 26,
+    "product_name_bold": True,
     # Editorial
-    "editorial":       "",
+    "editorial":         "",
     # Banner
     "banner_img_b64": "",
     "banner_img_ext": "png",
@@ -35,9 +37,9 @@ DEFAULT_CONFIG = {
     "table_event_bg": "#acac95",
     "body_text":      "#2e2e2e",
     # Tipografia
-    "body_font":      "Georgia, 'Times New Roman', serif",
+    "body_font":      "Arial, Helvetica, sans-serif",
     "font_size":      "14",
-    "line_height":    "1.25",
+    "line_height":    "1.5",
     # Tabela
     "table_header_bg": "#26619C",
     "use_temp_colors":  True,

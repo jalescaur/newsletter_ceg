@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 
 from renderer import build_email_html, build_full_html, _render_footer
 from config import (
-    DEFAULT_CONFIG, FONT_OPTIONS, DATE_FORMAT_OPTIONS, SAMPLE_CONTENT,
+    DEFAULT_CONFIG, DATE_FORMAT_OPTIONS, SAMPLE_CONTENT,
     list_profiles, save_profile, load_profile, delete_profile,
 )
 
@@ -102,9 +102,11 @@ _ss("banner_ext",       "png")
 # Aparência (carregada do DEFAULT_CONFIG — persistida via perfis)
 _ss("org",              DEFAULT_CONFIG["org"])
 _ss("edition",          DEFAULT_CONFIG["edition"])
-_ss("product_name",     DEFAULT_CONFIG["product_name"])
-_ss("product_tagline",  DEFAULT_CONFIG["product_tagline"])
-_ss("editorial",        DEFAULT_CONFIG["editorial"])
+_ss("product_name",      DEFAULT_CONFIG["product_name"])
+_ss("product_tagline",   DEFAULT_CONFIG["product_tagline"])
+_ss("product_name_size", DEFAULT_CONFIG["product_name_size"])
+_ss("product_name_bold", DEFAULT_CONFIG["product_name_bold"])
+_ss("editorial",         DEFAULT_CONFIG["editorial"])
 _ss("date_fmt_key",     list(DATE_FORMAT_OPTIONS.keys())[0])
 _ss("banner_height",    int(DEFAULT_CONFIG["banner_height"].replace("px","")))
 _ss("banner_fallback",  DEFAULT_CONFIG["banner_fallback"])
@@ -113,7 +115,6 @@ _ss("highlight",        DEFAULT_CONFIG["highlight"])
 _ss("body_text",        DEFAULT_CONFIG["body_text"])
 _ss("primary",          DEFAULT_CONFIG["primary"])
 _ss("bg_color",         DEFAULT_CONFIG["bg_color"])
-_ss("font_label",       list(FONT_OPTIONS.keys())[0])
 _ss("font_size",        int(DEFAULT_CONFIG["font_size"]))
 _ss("line_height",      float(DEFAULT_CONFIG["line_height"]))
 _ss("footer_cols",      1)
@@ -133,6 +134,8 @@ def build_cfg() -> dict:
         "edition":            st.session_state.edition,
         "product_name":       st.session_state.product_name,
         "product_tagline":    st.session_state.product_tagline,
+        "product_name_size":  st.session_state.product_name_size,
+        "product_name_bold":  st.session_state.product_name_bold,
         "editorial":          st.session_state.editorial,
         "date_format":        DATE_FORMAT_OPTIONS[st.session_state.date_fmt_key],
         "banner_img_b64":     st.session_state.banner_b64,
@@ -144,7 +147,7 @@ def build_cfg() -> dict:
         "body_text":          st.session_state.body_text,
         "primary":            st.session_state.primary,
         "bg_color":           st.session_state.bg_color,
-        "body_font":          FONT_OPTIONS[st.session_state.font_label],
+        "body_font":          "Arial, Helvetica, sans-serif",
         "font_size":          str(st.session_state.font_size),
         "line_height":        str(st.session_state.line_height),
         "footer_cols":        st.session_state.footer_cols,
@@ -160,14 +163,15 @@ def build_cfg() -> dict:
 
 def _apply_profile_to_ss(cfg: dict):
     """Aplica um dict de configuração carregado ao session_state."""
-    font_map_inv = {v: k for k, v in FONT_OPTIONS.items()}
     date_map_inv = {v: k for k, v in DATE_FORMAT_OPTIONS.items()}
 
     st.session_state.org           = cfg.get("org", DEFAULT_CONFIG["org"])
     st.session_state.edition       = cfg.get("edition", DEFAULT_CONFIG["edition"])
-    st.session_state.product_name  = cfg.get("product_name",    DEFAULT_CONFIG["product_name"])
-    st.session_state.product_tagline = cfg.get("product_tagline", DEFAULT_CONFIG["product_tagline"])
-    st.session_state.editorial     = cfg.get("editorial",        DEFAULT_CONFIG["editorial"])
+    st.session_state.product_name      = cfg.get("product_name",      DEFAULT_CONFIG["product_name"])
+    st.session_state.product_tagline   = cfg.get("product_tagline",   DEFAULT_CONFIG["product_tagline"])
+    st.session_state.product_name_size = cfg.get("product_name_size", DEFAULT_CONFIG["product_name_size"])
+    st.session_state.product_name_bold = cfg.get("product_name_bold", DEFAULT_CONFIG["product_name_bold"])
+    st.session_state.editorial         = cfg.get("editorial",         DEFAULT_CONFIG["editorial"])
     st.session_state.date_fmt_key  = date_map_inv.get(cfg.get("date_format","extenso"), list(DATE_FORMAT_OPTIONS.keys())[0])
     st.session_state.banner_height = int(cfg.get("banner_height","160px").replace("px",""))
     st.session_state.banner_fallback = cfg.get("banner_fallback", DEFAULT_CONFIG["banner_fallback"])
@@ -176,7 +180,6 @@ def _apply_profile_to_ss(cfg: dict):
     st.session_state.body_text     = cfg.get("body_text",    DEFAULT_CONFIG["body_text"])
     st.session_state.primary       = cfg.get("primary",      DEFAULT_CONFIG["primary"])
     st.session_state.bg_color      = cfg.get("bg_color",     DEFAULT_CONFIG["bg_color"])
-    st.session_state.font_label    = font_map_inv.get(cfg.get("body_font", DEFAULT_CONFIG["body_font"]), list(FONT_OPTIONS.keys())[0])
     st.session_state.font_size     = int(cfg.get("font_size","14"))
     st.session_state.line_height   = float(cfg.get("line_height","1.25"))
     st.session_state.footer_cols   = int(cfg.get("footer_cols", 1))
@@ -258,6 +261,11 @@ with st.sidebar:
     st.session_state.edition  = st.text_input("Edição / Volume", st.session_state.edition, key="sb_ed")
     st.session_state.product_name    = st.text_input("Nome do produto",  st.session_state.product_name,    key="sb_pname")
     st.session_state.product_tagline = st.text_input("Tagline",          st.session_state.product_tagline, key="sb_ptag")
+    pn1, pn2 = st.columns(2)
+    with pn1:
+        st.session_state.product_name_size = st.slider("Tamanho título (px)", 16, 48, st.session_state.product_name_size, key="sb_pnsz")
+    with pn2:
+        st.session_state.product_name_bold = st.toggle("Negrito", st.session_state.product_name_bold, key="sb_pnbd")
     st.session_state.date_fmt_key = st.selectbox(
         "Formato de data",
         list(DATE_FORMAT_OPTIONS.keys()),
@@ -311,16 +319,12 @@ with st.sidebar:
 
     # ── Tipografia ────────────────────────────────────────────────────────────
     st.markdown("#### 🔤 Tipografia")
-    st.session_state.font_label = st.selectbox(
-        "Fonte", list(FONT_OPTIONS.keys()),
-        index=list(FONT_OPTIONS.keys()).index(st.session_state.font_label),
-        key="sb_font",
-    )
+    st.caption("Fonte: Arial / Helvetica (sem serifa, fixa)")
     fc1, fc2 = st.columns(2)
     with fc1:
-        st.session_state.font_size   = st.slider("Tamanho (px)", 11, 20, st.session_state.font_size,  key="sb_fs")
+        st.session_state.font_size   = st.slider("Tamanho corpo (px)", 11, 20, st.session_state.font_size, key="sb_fs")
     with fc2:
-        st.session_state.line_height = st.slider("Espaçamento", 1.2, 2.5, st.session_state.line_height, step=0.05, key="sb_lh")
+        st.session_state.line_height = st.slider("Espaçamento entre linhas", 1.3, 2.0, st.session_state.line_height, step=0.05, key="sb_lh")
 
     st.divider()
 
@@ -416,6 +420,40 @@ with t_editor:
 | `$E = mc^2$` | LaTeX inline |
 | `$$\frac{1}{2}$$` | LaTeX em bloco |
 """)
+
+        # ── Helpers de inserção ───────────────────────────────────────────────
+        with st.expander("🖼️ Inserir imagem por link"):
+            img_url = st.text_input("URL da imagem", placeholder="https://...", key="img_url")
+            img_alt = st.text_input("Texto alternativo", placeholder="Descrição", key="img_alt", value="imagem")
+            if st.button("➕ Inserir no editor", key="btn_img_insert"):
+                if img_url.strip():
+                    snippet = f"\n![{img_alt}]({img_url.strip()})\n"
+                    st.session_state.md_text += snippet
+                    st.rerun()
+            if img_url.strip():
+                st.code(f"![{img_alt}]({img_url.strip()})", language=None)
+
+        with st.expander("📊 Inserir tabela"):
+            tc1, tc2 = st.columns(2)
+            with tc1:
+                t_cols = st.number_input("Colunas", 2, 8, 3, key="tbl_cols")
+            with tc2:
+                t_rows = st.number_input("Linhas", 1, 20, 3, key="tbl_rows")
+            headers = [st.text_input(f"Cabeçalho {i+1}", value=f"Coluna {i+1}", key=f"th_{i}") for i in range(int(t_cols))]
+            if st.button("➕ Inserir tabela no editor", key="btn_tbl_insert"):
+                sep  = "| " + " | ".join(["---"] * int(t_cols)) + " |"
+                head = "| " + " | ".join(headers) + " |"
+                rows = "\n".join(
+                    "| " + " | ".join([""] * int(t_cols)) + " |"
+                    for _ in range(int(t_rows))
+                )
+                snippet = f"\n{head}\n{sep}\n{rows}\n"
+                st.session_state.md_text += snippet
+                st.rerun()
+            tbl_preview = "| " + " | ".join(headers) + " |\n"
+            tbl_preview += "| " + " | ".join(["---"] * int(t_cols)) + " |\n"
+            tbl_preview += ("| " + " | ".join(["…"] * int(t_cols)) + " |\n") * int(t_rows)
+            st.code(tbl_preview, language=None)
 
         # Ações rápidas no editor
         st.markdown("**Ações rápidas**")
