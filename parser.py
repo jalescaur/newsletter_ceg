@@ -355,6 +355,12 @@ def parse_markdown(text: str) -> List[Theme]:
     # Buffer de linhas brutas do artigo corrente
     art_lines: List[str] = []
 
+    # Contêiner anônimo para capturar texto solto antes do primeiro cabeçalho
+    if lines and _hlevel(lines[0]) is None:
+        theme   = Theme(title="")
+        section = Section(title="")
+        article = Article(title="")
+
     def close_article():
         nonlocal article, art_lines
         if article is not None:
