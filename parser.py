@@ -110,12 +110,12 @@ def _is_sep_row(line: str) -> bool:
 # Inline: aplicados sobre texto puro
 def inline(text: str) -> str:
     """Aplica formatação inline Markdown → HTML. Suporta LaTeX $...$ e $$...$$."""
-    # LaTeX display $$...$$ antes de inline para não confundir delimitadores
-    text = re.sub(r"\$\$(.+?)\$\$",
+    # LaTeX display $$...$$ — não deve ser precedido por letra/dígito
+    text = re.sub(r"(?<!\w)\$\$(.+?)\$\$",
                   lambda m: _latex_to_mathml(m.group(1), "block"),
                   text, flags=re.DOTALL)
-    # LaTeX inline $...$
-    text = re.sub(r"\$(.+?)\$",
+    # LaTeX inline $...$ — não deve ser precedido por letra/dígito (evita US$, R$, etc.)
+    text = re.sub(r"(?<!\w)\$([^\s$][^$]*?)\$",
                   lambda m: _latex_to_mathml(m.group(1), "inline"),
                   text)
     # Negrito+itálico (***) antes de negrito e itálico

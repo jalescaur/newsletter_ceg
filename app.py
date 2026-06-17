@@ -561,6 +561,96 @@ with t_preview:
 
 # ── TAB 3: GUIA ───────────────────────────────────────────────────────────────
 with t_guia:
+    with st.expander("∑ LaTeX — Guia de fórmulas matemáticas", expanded=False):
+        st.markdown("""
+**Sintaxe:** use `$...$` para fórmula inline e `$$...$$` para bloco centralizado.
+
+> ⚠️ Para valores monetários (R\\$, US\\$, €), escreva normalmente — o `$` só vira LaTeX quando **não** é precedido por letra ou dígito.
+
+---
+
+#### Operações básicas
+
+| Sintaxe | Resultado |
+|---------|-----------|
+| `$a + b$` | *a* + *b* |
+| `$a - b$` | *a* − *b* |
+| `$a \\times b$` | *a* × *b* |
+| `$a \\div b$` | *a* ÷ *b* |
+| `$a^{2}$` | *a*² |
+| `$a_{i}$` | *aᵢ* |
+| `$\\sqrt{x}$` | √*x* |
+| `$\\sqrt[n]{x}$` | ⁿ√*x* |
+
+---
+
+#### Frações e somatórios
+
+| Sintaxe | Descrição |
+|---------|-----------|
+| `$\\frac{a}{b}$` | Fração *a/b* |
+| `$\\sum_{i=1}^{n} x_i$` | Somatório de *x*ᵢ |
+| `$\\prod_{i=1}^{n} x_i$` | Produtório |
+| `$\\int_{a}^{b} f(x)\\,dx$` | Integral definida |
+| `$\\lim_{x \\to 0} f(x)$` | Limite |
+
+---
+
+#### Letras gregas comuns
+
+| Sintaxe | Letra |
+|---------|-------|
+| `$\\alpha$` | α |
+| `$\\beta$` | β |
+| `$\\gamma$ / $\\Gamma$` | γ / Γ |
+| `$\\delta$ / $\\Delta$` | δ / Δ |
+| `$\\theta$` | θ |
+| `$\\lambda$` | λ |
+| `$\\mu$` | μ |
+| `$\\sigma$ / $\\Sigma$` | σ / Σ |
+| `$\\pi$ / $\\Pi$` | π / Π |
+| `$\\omega$ / $\\Omega$` | ω / Ω |
+| `$\\epsilon$` | ε |
+| `$\\rho$` | ρ |
+
+---
+
+#### Economia e estatística — exemplos prontos
+
+```
+$\\hat{\\beta} = (X^{\\top}X)^{-1}X^{\\top}y$
+```
+```
+$\\text{PIB} = C + I + G + (X - M)$
+```
+```
+$$\\bar{x} = \\frac{1}{n}\\sum_{i=1}^{n} x_i$$
+```
+```
+$$\\text{Var}(X) = E[X^2] - (E[X])^2$$
+```
+```
+$$\\frac{\\partial \\ln L}{\\partial \\theta} = 0$$
+```
+
+---
+
+#### Operadores e símbolos úteis
+
+| Sintaxe | Símbolo |
+|---------|---------|
+| `$\\leq$` / `$\\geq$` | ≤ / ≥ |
+| `$\\neq$` | ≠ |
+| `$\\approx$` | ≈ |
+| `$\\infty$` | ∞ |
+| `$\\in$` | ∈ |
+| `$\\subset$` | ⊂ |
+| `$\\cup$` / `$\\cap$` | ∪ / ∩ |
+| `$\\rightarrow$` | → |
+| `$\\Rightarrow$` | ⇒ |
+| `$\\text{palavra}$` | texto em fonte normal dentro da fórmula |
+""")
+
     g1, g2 = st.columns([1, 1], gap="large")
 
     with g1:
