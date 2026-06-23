@@ -292,9 +292,9 @@ def _render_footer(cfg: dict) -> str:
             f'font-family:{FONT_UI};text-align:center;line-height:1.6">'
             f'<strong style="color:#ffffff;letter-spacing:.04em">Editorial</strong><br>'
             f'{editorial}</p>'
-            # TODO: inserir URL da nota metodológica abaixo (substituir # pelo link real)
             f'<p style="margin:0 0 12px;font-size:9.5px;font-family:{FONT_UI};text-align:center">'
-            f'<a href="#" style="color:rgba(255,255,255,.4);text-decoration:none;letter-spacing:.03em">'
+            f'<a href="https://estudosglobais.unb.br/wp-content/uploads/2026/06/Lass-e-Caur-2026-Nota-Metodologica.pdf" '
+            f'style="color:rgba(255,255,255,.4);text-decoration:none;letter-spacing:.03em">'
             f'Nota Metodológica</a></p>'
             f'<div style="height:1px;background:rgba(255,255,255,.2);margin:0 0 14px"></div>'
         )
