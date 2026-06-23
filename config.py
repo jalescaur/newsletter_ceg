@@ -21,7 +21,7 @@ DEFAULT_CONFIG = {
     # Produto
     "product_name":      "GPS Brasil",
     "product_tagline":   "O que importa no mundo. O que muda para o Brasil.",
-    "product_name_size": 26,
+    "product_name_size": 50,
     "product_name_bold": True,
     # Editorial
     "editorial":         "",
