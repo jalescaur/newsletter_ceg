@@ -17,7 +17,7 @@ from config import (
 
 # ── Página ────────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Boletim CEG-UnB",
+    page_title="GPS Brasil Editor",
     page_icon="📰",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -213,8 +213,8 @@ def _make_pdf(html_full: str) -> bytes:
 # ══════════════════════════════════════════════════════════════════════════════
 with st.sidebar:
     st.markdown('<div class="sidebar-header">', unsafe_allow_html=True)
-    st.markdown("### 📰 CEG — UnB")
-    st.caption("Gerador de Boletim")
+    st.markdown("### 📰 GPS Brasil | CEG")
+    st.caption("Gerador de Newsletter")
     st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Perfis ────────────────────────────────────────────────────────────────
@@ -263,7 +263,7 @@ with st.sidebar:
     st.session_state.product_tagline = st.text_input("Tagline",          st.session_state.product_tagline, key="sb_ptag")
     pn1, pn2 = st.columns(2)
     with pn1:
-        st.session_state.product_name_size = st.slider("Tamanho título (px)", 16, 48, st.session_state.product_name_size, key="sb_pnsz")
+        st.session_state.product_name_size = st.slider("Tamanho título (px)", 16, 50, st.session_state.product_name_size, key="sb_pnsz")
     with pn2:
         st.session_state.product_name_bold = st.toggle("Negrito", st.session_state.product_name_bold, key="sb_pnbd")
     st.session_state.date_fmt_key = st.selectbox(
