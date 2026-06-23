@@ -19,8 +19,8 @@ DEFAULT_CONFIG = {
     "edition":        "Jun. 2026",
     "date_format":    "extenso",
     # Produto
-    "product_name":      "Risco Internacional",
-    "product_tagline":   "Um produto do Laboratório de Análise de Risco e Conjuntura",
+    "product_name":      "GPS Brasil",
+    "product_tagline":   "O que importa no mundo. O que muda para o Brasil.",
     "product_name_size": 26,
     "product_name_bold": True,
     # Editorial
