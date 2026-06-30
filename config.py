@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
     # Identificação
     "org":            "CEG — UnB",
     "edition":        "Jun. 2026",
-    "date_format":    "extenso",
+    "edition_date":   "",
     # Produto
     "product_name":      "GPS Brasil",
     "product_tagline":   "O que importa no mundo. O que muda para o Brasil.",

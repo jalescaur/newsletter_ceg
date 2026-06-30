@@ -265,9 +265,14 @@ def _render_header(cfg: dict) -> str:
         f'style="width:100%;max-width:560px;height:{h};object-fit:cover;display:block" />'
         f'</div>'
         f'<div style="background:#ffffff;padding:20px 28px 16px;text-align:center">'
-        f'<p style="margin:0 0 10px;font-size:11px;color:{COLOR_SECONDARY};'
-        f'font-family:{FONT_UI};letter-spacing:.1em;text-transform:uppercase">'
-        f'{_fmt_date_today()}</p>'
+        *(
+            [
+                f'<p style="margin:0 0 10px;font-size:11px;color:{COLOR_SECONDARY};'
+                f'font-family:{FONT_UI};letter-spacing:.1em;text-transform:uppercase">'
+                f'{cfg.get("edition_date","").strip()}</p>'
+            ]
+            if cfg.get("edition_date", "").strip() else []
+        ),
         f'<p style="margin:0 0 6px;font-size:{cfg.get("product_name_size",26)}px;'
         f'font-weight:{"700" if cfg.get("product_name_bold",True) else "400"};'
         f'color:{COLOR_H1};font-family:{FONT_UI};letter-spacing:-.01em;line-height:1.2">'

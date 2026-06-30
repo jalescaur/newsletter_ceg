@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 
 from renderer import build_email_html, build_full_html, _render_footer
 from config import (
-    DEFAULT_CONFIG, DATE_FORMAT_OPTIONS, SAMPLE_CONTENT,
+    DEFAULT_CONFIG, SAMPLE_CONTENT,
     list_profiles, save_profile, load_profile, delete_profile,
 )
 
@@ -107,7 +107,7 @@ _ss("product_tagline",   DEFAULT_CONFIG["product_tagline"])
 _ss("product_name_size", DEFAULT_CONFIG["product_name_size"])
 _ss("product_name_bold", DEFAULT_CONFIG["product_name_bold"])
 _ss("editorial",         DEFAULT_CONFIG["editorial"])
-_ss("date_fmt_key",     list(DATE_FORMAT_OPTIONS.keys())[0])
+_ss("edition_date",     DEFAULT_CONFIG["edition_date"])
 _ss("banner_height",    int(DEFAULT_CONFIG["banner_height"].replace("px","")))
 _ss("banner_fallback",  DEFAULT_CONFIG["banner_fallback"])
 _ss("accent",           DEFAULT_CONFIG["accent"])
@@ -137,7 +137,7 @@ def build_cfg() -> dict:
         "product_name_size":  st.session_state.product_name_size,
         "product_name_bold":  st.session_state.product_name_bold,
         "editorial":          st.session_state.editorial,
-        "date_format":        DATE_FORMAT_OPTIONS[st.session_state.date_fmt_key],
+        "edition_date":       st.session_state.edition_date,
         "banner_img_b64":     st.session_state.banner_b64,
         "banner_img_ext":     st.session_state.banner_ext,
         "banner_height":      f"{st.session_state.banner_height}px",
@@ -163,8 +163,6 @@ def build_cfg() -> dict:
 
 def _apply_profile_to_ss(cfg: dict):
     """Aplica um dict de configuração carregado ao session_state."""
-    date_map_inv = {v: k for k, v in DATE_FORMAT_OPTIONS.items()}
-
     st.session_state.org           = cfg.get("org", DEFAULT_CONFIG["org"])
     st.session_state.edition       = cfg.get("edition", DEFAULT_CONFIG["edition"])
     st.session_state.product_name      = cfg.get("product_name",      DEFAULT_CONFIG["product_name"])
@@ -172,7 +170,7 @@ def _apply_profile_to_ss(cfg: dict):
     st.session_state.product_name_size = cfg.get("product_name_size", DEFAULT_CONFIG["product_name_size"])
     st.session_state.product_name_bold = cfg.get("product_name_bold", DEFAULT_CONFIG["product_name_bold"])
     st.session_state.editorial         = cfg.get("editorial",         DEFAULT_CONFIG["editorial"])
-    st.session_state.date_fmt_key  = date_map_inv.get(cfg.get("date_format","extenso"), list(DATE_FORMAT_OPTIONS.keys())[0])
+    st.session_state.edition_date  = cfg.get("edition_date", "")
     st.session_state.banner_height = int(cfg.get("banner_height","160px").replace("px",""))
     st.session_state.banner_fallback = cfg.get("banner_fallback", DEFAULT_CONFIG["banner_fallback"])
     st.session_state.accent        = cfg.get("accent",       DEFAULT_CONFIG["accent"])
@@ -266,11 +264,12 @@ with st.sidebar:
         st.session_state.product_name_size = st.slider("Tamanho título (px)", 16, 50, st.session_state.product_name_size, key="sb_pnsz")
     with pn2:
         st.session_state.product_name_bold = st.toggle("Negrito", st.session_state.product_name_bold, key="sb_pnbd")
-    st.session_state.date_fmt_key = st.selectbox(
-        "Formato de data",
-        list(DATE_FORMAT_OPTIONS.keys()),
-        index=list(DATE_FORMAT_OPTIONS.keys()).index(st.session_state.date_fmt_key),
-        key="sb_dfmt",
+    st.session_state.edition_date = st.text_input(
+        "Data da edição (opcional)",
+        st.session_state.edition_date,
+        placeholder="ex: 30 de junho de 2026",
+        help="Deixe em branco para omitir a data no cabeçalho. Escreva por extenso.",
+        key="sb_edate",
     )
 
     st.divider()
