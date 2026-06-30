@@ -288,7 +288,7 @@ def _render_header(cfg: dict) -> str:
 # ── Footer ────────────────────────────────────────────────────────────────────
 
 def _render_footer(cfg: dict) -> str:
-    next_ed = _next_wednesday()
+    next_ed = cfg.get("next_edition_date", "").strip()
     editorial = cfg.get("editorial", "").strip()
     editorial_html = ""
     if editorial:
@@ -308,8 +308,9 @@ def _render_footer(cfg: dict) -> str:
         f'<p style="margin:0 0 14px;font-size:12px;color:#ffffff;'
         f'font-family:{FONT_UI};line-height:1.6;text-align:center;font-style:italic">'
         f'Dúvidas, comentários ou interesse em aprofundar algum tema?<br>'
-        f'Entre em contato — teremos prazer em conversar.<br>'
-        f'<strong>Próxima edição: {next_ed}</strong></p>'
+        f'Entre em contato — teremos prazer em conversar.'
+        + (f'<br><strong>Próxima edição: {next_ed}</strong>' if next_ed else "")
+        + f'</p>'
         f'<div style="height:1px;background:rgba(255,255,255,.2);margin:0 0 14px"></div>'
         f'{editorial_html}'
         f'<p style="margin:0 0 6px;font-size:11px;font-family:{FONT_UI};text-align:center">'

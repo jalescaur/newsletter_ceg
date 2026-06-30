@@ -107,7 +107,8 @@ _ss("product_tagline",   DEFAULT_CONFIG["product_tagline"])
 _ss("product_name_size", DEFAULT_CONFIG["product_name_size"])
 _ss("product_name_bold", DEFAULT_CONFIG["product_name_bold"])
 _ss("editorial",         DEFAULT_CONFIG["editorial"])
-_ss("edition_date",     DEFAULT_CONFIG["edition_date"])
+_ss("edition_date",          DEFAULT_CONFIG["edition_date"])
+_ss("next_edition_date",     DEFAULT_CONFIG["next_edition_date"])
 _ss("banner_height",    int(DEFAULT_CONFIG["banner_height"].replace("px","")))
 _ss("banner_fallback",  DEFAULT_CONFIG["banner_fallback"])
 _ss("accent",           DEFAULT_CONFIG["accent"])
@@ -138,6 +139,7 @@ def build_cfg() -> dict:
         "product_name_bold":  st.session_state.product_name_bold,
         "editorial":          st.session_state.editorial,
         "edition_date":       st.session_state.edition_date,
+        "next_edition_date":  st.session_state.next_edition_date,
         "banner_img_b64":     st.session_state.banner_b64,
         "banner_img_ext":     st.session_state.banner_ext,
         "banner_height":      f"{st.session_state.banner_height}px",
@@ -170,7 +172,8 @@ def _apply_profile_to_ss(cfg: dict):
     st.session_state.product_name_size = cfg.get("product_name_size", DEFAULT_CONFIG["product_name_size"])
     st.session_state.product_name_bold = cfg.get("product_name_bold", DEFAULT_CONFIG["product_name_bold"])
     st.session_state.editorial         = cfg.get("editorial",         DEFAULT_CONFIG["editorial"])
-    st.session_state.edition_date  = cfg.get("edition_date", "")
+    st.session_state.edition_date       = cfg.get("edition_date", "")
+    st.session_state.next_edition_date  = cfg.get("next_edition_date", "")
     st.session_state.banner_height = int(cfg.get("banner_height","160px").replace("px",""))
     st.session_state.banner_fallback = cfg.get("banner_fallback", DEFAULT_CONFIG["banner_fallback"])
     st.session_state.accent        = cfg.get("accent",       DEFAULT_CONFIG["accent"])
@@ -270,6 +273,13 @@ with st.sidebar:
         placeholder="ex: 30 de junho de 2026",
         help="Deixe em branco para omitir a data no cabeçalho. Escreva por extenso.",
         key="sb_edate",
+    )
+    st.session_state.next_edition_date = st.text_input(
+        "Próxima edição (opcional)",
+        st.session_state.next_edition_date,
+        placeholder="ex: 1 de julho de 2026",
+        help="Deixe em branco para omitir do rodapé. Escreva por extenso.",
+        key="sb_next_edate",
     )
 
     st.divider()
