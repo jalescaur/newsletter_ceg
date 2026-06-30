@@ -259,20 +259,20 @@ def _render_header(cfg: dict) -> str:
     h   = cfg.get("banner_height",  "160px")
     img_src = f"data:image/{ext};base64,{b64}" if b64 else HEADER_IMG_URL
 
+    edition_date = cfg.get("edition_date", "").strip()
+    date_html = (
+        f'<p style="margin:0 0 10px;font-size:11px;color:{COLOR_SECONDARY};'
+        f'font-family:{FONT_UI};letter-spacing:.1em;text-transform:uppercase">'
+        f'{edition_date}</p>'
+    ) if edition_date else ""
+
     return (
         f'<div style="line-height:0;overflow:hidden">'
         f'<img src="{img_src}" alt="Centro de Estudos Globais — UnB" '
         f'style="width:100%;max-width:560px;height:{h};object-fit:cover;display:block" />'
         f'</div>'
         f'<div style="background:#ffffff;padding:20px 28px 16px;text-align:center">'
-        *(
-            [
-                f'<p style="margin:0 0 10px;font-size:11px;color:{COLOR_SECONDARY};'
-                f'font-family:{FONT_UI};letter-spacing:.1em;text-transform:uppercase">'
-                f'{cfg.get("edition_date","").strip()}</p>'
-            ]
-            if cfg.get("edition_date", "").strip() else []
-        ),
+        f'{date_html}'
         f'<p style="margin:0 0 6px;font-size:{cfg.get("product_name_size",26)}px;'
         f'font-weight:{"700" if cfg.get("product_name_bold",True) else "400"};'
         f'color:{COLOR_H1};font-family:{FONT_UI};letter-spacing:-.01em;line-height:1.2">'
